@@ -3,7 +3,6 @@ import requests
 import yfinance as yf
 import pandas as pd
 
-
 exchanges = ["nyse", "nasdaq", "amex"] # US Stock Exchanges
 
 tickers = []
@@ -20,7 +19,7 @@ for stock_ex in exchanges:
     for i in range(len(data)):
         ticker = data[i]
 
-        # important to note that since the list of tickers is massive, need to find any method to narrow the scope
+        # important to note that since the list of tickers is massive, need to find any method to narrow scope
 
         # Step 1: Check to see if anything is blank from the full json file
         if ticker["lastsale"] == "" or ticker["volume"] == "" or ticker["marketCap"] == "":
@@ -36,12 +35,16 @@ for stock_ex in exchanges:
             metric_evaluation = ["symbol", "beta", "revenueGrowth", "priceToBook", "debtToEquity", 
                                  "profitMargins", "quickRatio", "fiftyDayAverage", "pegRatio"]
             
-            try:
-                tick = pd.DataFrame(yf.Ticker(ticker["symbol"]).info)[metric_evaluation].drop_duplicates()
-                tickers.append(tick)
-            except:
-                continue
+            tickers.append(dict(filter(lambda item: item[0] in metric_evaluation, 
+                                       yf.Ticker(ticker[metric_evaluation[0]]).info.items())))
+            
     
-tickers = pd.concat(tickers,axis=0).reset_index(drop=True)
+tickers = pd.DataFrame(tickers)
+
+# Putting the symbol first for readability purposes
+symbol = tickers.pop("symbol")
+tickers.insert(0,"symbol",symbol)
+
+tickers = tickers.dropna(axis=0)
 
 print(tickers) # this currently takes too long to process. need to make it shorter
