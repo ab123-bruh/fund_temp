@@ -5,6 +5,9 @@ import pandas as pd
 
 exchanges = ["nyse", "nasdaq", "amex"] # US Stock Exchanges
 
+metric_evaluation = ["symbol", "beta", "revenueGrowth", "priceToBook", "debtToEquity", "profitMargins", "quickRatio", 
+                     "fiftyDayAverage", "pegRatio"]
+
 tickers = []
 
 for stock_ex in exchanges:
@@ -24,27 +27,41 @@ for stock_ex in exchanges:
         # Step 1: Check to see if anything is blank from the full json file
         if ticker["lastsale"] == "" or ticker["volume"] == "" or ticker["marketCap"] == "":
             continue
-        
-        # Step 2: eliminate low cost stocks, less volume, and bound the marketcap due to portfolio size
-        a = float(ticker["lastsale"][1:]) > 10 and float(ticker["volume"]) > 200000
-        b = float(ticker["marketCap"]) >= 2000000000 and float(ticker["marketCap"]) <= 15000000000
 
-        if a and b:
-            # Step 3: gather data of specific metrics which we will use to eliminate any that don't fit in criteria
-            #         and if any of these are missing, they are automatically eliminated from our scope 
-            metric_evaluation = ["symbol", "beta", "revenueGrowth", "priceToBook", "debtToEquity", 
-                                 "profitMargins", "quickRatio", "fiftyDayAverage", "pegRatio"]
+        ticker["lastsale"] = float(ticker["lastsale"][1:])
+        ticker["volume"] = float(ticker["volume"])
+        ticker["marketCap"] = float(ticker["marketCap"])
+
+        # Step 2: eliminate low cost stocks, less volume, and bound the marketcap due to portfolio size
+        check_1 = ticker["lastsale"] > 10 and ticker["volume"] > 200000
+        check_2 = ticker["marketCap"] >= 2000000000 and ticker["marketCap"] <= 15000000000
+
+        if check_1 and check_2:
+            values = dict(filter(lambda item: item[0] in metric_evaluation, 
+                                 yf.Ticker(ticker[metric_evaluation[0]]).info.items()))
             
-            tickers.append(dict(filter(lambda item: item[0] in metric_evaluation, 
-                                       yf.Ticker(ticker[metric_evaluation[0]]).info.items())))
+
+            check_3 = ticker["lastsale"] > values[metric_evaluation[7]]
             
-    
-tickers = pd.DataFrame(tickers)
+            if check_3: 
+                continue
+
+            tickers.append(values)
+            
 
 # Putting the symbol first for readability purposes
-symbol = tickers.pop("symbol")
-tickers.insert(0,"symbol",symbol)
+tickers = pd.DataFrame(tickers)
 
 tickers = tickers.dropna(axis=0)
+
+for col in metric_evaluation[1:]:
+    tickers[col] = pd.to_numeric(tickers[col])
+
+# Step 3: eliminate any criteria which is greater or less than right away so we have a smaller dataset 
+#         which this was started in the first check of seeing if latest price less than 50 day moving average
+tickers = tickers.loc[(tickers[metric_evaluation[2]] > .05) & (tickers[metric_evaluation[5]] > .15) 
+                      & (tickers[metric_evaluation[6]] > 1)]
+
+tickers = tickers[metric_evaluation].reset_index(drop=True)
 
 print(tickers) # this currently takes too long to process. need to make it shorter
