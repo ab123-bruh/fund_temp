@@ -5,8 +5,8 @@ import pandas as pd
 
 exchanges = ["nyse", "nasdaq", "amex"] # US Stock Exchanges
 
-metric_evaluation = ["symbol", "beta", "revenueGrowth", "priceToBook", "debtToEquity", "profitMargins", "quickRatio", 
-                     "fiftyDayAverage", "pegRatio"]
+metric_evaluation = ["symbol", "currentPrice", "beta", "revenueGrowth", "priceToBook", "debtToEquity", "profitMargins", 
+                     "quickRatio", "fiftyDayAverage", "pegRatio"]
 
 tickers = []
 
@@ -41,7 +41,7 @@ for stock_ex in exchanges:
                                  yf.Ticker(ticker[metric_evaluation[0]]).info.items()))
             
 
-            check_3 = ticker["lastsale"] > values[metric_evaluation[7]]
+            check_3 = ticker["lastsale"] > values[metric_evaluation[8]]
             
             if check_3: 
                 continue
@@ -59,8 +59,12 @@ for col in metric_evaluation[1:]:
 
 # Step 3: eliminate any criteria which is greater or less than right away so we have a smaller dataset 
 #         which this was started in the first check of seeing if latest price less than 50 day moving average
-tickers = tickers.loc[(tickers[metric_evaluation[2]] > .05) & (tickers[metric_evaluation[5]] > .15) 
-                      & (tickers[metric_evaluation[6]] > 1)]
+tickers = tickers.loc[(tickers[metric_evaluation[3]] > .05) & (tickers[metric_evaluation[4]] < 12) 
+                      & (tickers[metric_evaluation[5]] < 100) & (tickers[metric_evaluation[6]] > .15) 
+                      & (tickers[metric_evaluation[7]] > 1) & (tickers[metric_evaluation[9]] < 5)]
+
+
+tickers = tickers.loc[(tickers[metric_evaluation[2]] >= .5) & (tickers[metric_evaluation[2]] <= 1.5)]
 
 tickers = tickers[metric_evaluation].reset_index(drop=True)
 
