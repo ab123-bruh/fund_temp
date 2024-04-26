@@ -64,4 +64,4 @@ tickers = tickers.loc[(tickers[metric_evaluation[2]] >= .5) & (tickers[metric_ev
 
 tickers = tickers[metric_evaluation].reset_index(drop=True)
 
-print(tickers)
+print(tickers["symbol"].tolist())
