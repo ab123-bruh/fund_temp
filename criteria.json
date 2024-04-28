@@ -1,0 +1,39 @@
+{
+  "Exchanges": ["nyse", "nasdaq", "amex"],
+  "Metrics": ["symbol", "currentPrice", "beta", "revenueGrowth", "priceToBook", "debtToEquity", "profitMargins", "quickRatio", "fiftyDayAverage", "pegRatio"],
+  "Immediate Criteria": {
+    "lastsale": 5,
+    "volume": 200000,
+    "marketCap": {
+      "min": 2000000000,
+      "max": 15000000000
+    }
+  },
+  "Portfolio Criteria": {
+    "Greater": {
+      "revenueGrowth": 0.05,
+      "profitMargins": 0.15,
+      "quickRatio": 1
+    },
+    "Less Than": {
+      "priceToBook": 12,
+      "debtToEquity": 100,
+      "pegRatio": 5
+    },
+    "beta": {
+      "min": 0.5,
+      "max": 1.5
+    }
+  },
+  "Portfolio Weights": {
+    "CDLX": 0.0396,
+    "CVX": 0.1942,
+    "PYPL": 0.0772,
+    "MOD": 0.15,
+    "CALM": 0.0283,
+    "INDA": 0.0505,
+    "ANF": 0.1179
+  }
+}
+  
+  
