@@ -1,6 +1,5 @@
 {
   "Exchanges": ["nyse", "nasdaq", "amex"],
-  "Metrics": ["symbol", "currentPrice", "beta", "revenueGrowth", "priceToBook", "debtToEquity", "profitMargins", "quickRatio", "fiftyDayAverage", "pegRatio"],
   "Immediate Criteria": {
     "lastsale": 5,
     "volume": 200000,
