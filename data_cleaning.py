@@ -6,7 +6,7 @@ import yfinance as yf
 # Click on the file to refer to the criteria set or print it in the test jupyter notebook
 criteria = json.loads(open(os.getcwd() + "\\criteria.json","r").read())
 
-tickers = []
+tickers = list(criteria["Portfolio Weights"].keys())
 
 for stock_ex in criteria["Exchanges"]:
     github_branch = "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main"
@@ -25,8 +25,8 @@ for stock_ex in criteria["Exchanges"]:
         # important to note that since the list of tickers is massive, need to find any method to narrow scope
 
         # Step 1: Check to see if anything is blank from the full json file or ticker already in portfolio
-        if ticker["symbol"] in list(criteria["Portfolio Weights"].keys()) \
-              or any(ticker[checker] == "" for checker in immediate_criteria): continue
+        if ticker["symbol"] in tickers or any(ticker[checker] == "" for checker in immediate_criteria): 
+            continue
 
         # numeric comparison
         lastsale = float(ticker[immediate_criteria[0]][1:])
@@ -50,17 +50,17 @@ for stock_ex in criteria["Exchanges"]:
             metrics = list(greater.keys())
             metrics.extend(list(less_than.keys()))
 
-#             values = dict(filter(lambda item: item[0] in metrics, yf.Ticker(symbol).info.items()))
+            values = dict(filter(lambda item: item[0] in metrics, yf.Ticker(symbol).info.items()))
             
-#             try:
-#                 # Step 3: select tickers whick satisfy all of these conditions
-#                 check_3 = all(values[metric] > x for metric,x in greater.items()) 
-#                 check_4 = all(values[metric] < x for metric,x in less_than.items())
-#                 if check_3 and check_4:
-#                     tickers.append(symbol)
+            try:
+                # Step 3: select tickers whick satisfy all of these conditions
+                check_3 = all(values[metric] > x for metric,x in greater.items()) 
+                check_4 = all(values[metric] < x for metric,x in less_than.items())
+                if check_3 and check_4:
+                    tickers.append(symbol)
 
-#             except KeyError:
-#                 continue
-            
-# print(tickers)
+            except KeyError:
+                continue
+
+print(tickers)
 
