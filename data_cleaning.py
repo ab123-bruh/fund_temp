@@ -63,4 +63,3 @@ for stock_ex in criteria["Exchanges"]:
                 continue
 
 print(tickers)
-
