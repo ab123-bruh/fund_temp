@@ -1,51 +1,107 @@
+import json
 import os
-import subprocess
-import bt
-import datetime as dt
-import numpy as np
+import requests
+import yfinance as yf
 
-tickers = subprocess.run(args=["python", os.getcwd() + "\\data_cleaning.py"],text=True,stdout=subprocess.PIPE)
+class Criteria:
+    def __init__(self):
+        self.criteria = json.loads(open(os.getcwd() + "\\criteria.json","r").read())
+    
+    def add_criteria(self, key, value):
+        self.criteria[key] = value
+    
+    def remove_criteria(self):
+        pass
+    
+    def get_criteria(self):
+        return self.criteria
 
-results = tickers.stdout.strip('""[]\n').split(', ')
 
-symbols = [element.strip("'\"") for element in results]
+class Ticker:
+    def __init__(self):
+        self.github_branch = "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main"
+    
+    def get_all_tickers(self,NYSE=True,AMEX=True,NASDAQ=True):
+        exchanges = ["nyse", "nasdaq", "amex"]
 
-current_date = dt.date.today()
-start_date = current_date - dt.timedelta(days=365)
-start = (start_date - dt.timedelta(days=round((1.5*50)-1,0)))
+        get_exchanges = [NYSE,NASDAQ,AMEX]
 
-if start.isoweekday() == 6:
-    start = start - dt.timedelta(days=1)
-elif start.isoweekday() == 7:
-    start = start + dt.timedelta(days=1)
+        tickers = []
 
-df = bt.get(symbols,start=start.strftime("%Y-%m-%d"))
+        for stock_ex, check_exchange in zip(exchanges,get_exchanges):
 
-df_filter = (df - df.loc[df.index == start_date.strftime("%Y-%m-%d")].values)
+            if check_exchange:
+                exchange =  "/" + stock_ex + "/" + stock_ex + "_tickers.txt"
+                resp = requests.get(self.github_branch + exchange).text.split("\n")
+                tickers.extend(resp)
 
-highest = df_filter.loc[df_filter.index >= start_date.strftime("%Y-%m-%d")].max()
-lowest = df_filter.loc[df_filter.index >= start_date.strftime("%Y-%m-%d")].min()
+        tickers.sort()
+        
+        return tickers
+    
+    def portfolio_tickers(self):
+        return list(self.criteria["Portfolio Weights"].keys())
 
-norm_price = ((df_filter - lowest)/(highest - lowest))*(2*np.pi)
+    def recommended_tickers(self):
+        criteria = Criteria().get_criteria()
+        
+        new_tickers = []
 
-rolling_mean = norm_price.rolling(window=50).mean()
-rolling_std = norm_price.rolling(window=50).std()
+        for stock_ex in self.criteria["Exchanges"]:
+            exchange =  "/" + stock_ex + "/" + stock_ex + "_full_tickers.json" 
 
-buy_signal = norm_price < rolling_mean - (2 * rolling_std)
-sell_signal = norm_price > rolling_mean + (2 * rolling_std)
+            url = self.github_branch + exchange # combining the repository dataset with the specific exchange
 
-buy_signal = buy_signal.loc[buy_signal.index >= start_date.strftime("%Y-%m-%d")]
-sell_signal = sell_signal.loc[sell_signal.index >= start_date.strftime("%Y-%m-%d")]
+            resp = requests.get(url)
+            data = json.loads(resp.text)
 
-strat = bt.Strategy('tailAction', [bt.algos.SelectWhere(buy_signal), 
-                                   bt.algos.SelectWhere(sell_signal),
-                                   bt.algos.WeighRandomly(),
-                                   bt.algos.Rebalance()])
+            for i in range(len(data)):
+                ticker = data[i]
 
-# now we create the Backtest
-t = bt.Backtest(strat, df.loc[df.index >= start_date.strftime("%Y-%m-%d")])
+                immediate_criteria = list(criteria["Immediate Criteria"].keys()) # ["lastsale", "volume", "marketCap"]
+                
+                # important to note that since the list of tickers is massive, need to find any method to narrow scope
 
-# and let's run it!
-res = bt.run(t)
+                # Step 1: Check to see if anything is blank from the full json file or ticker already in portfolio
+                if ticker["symbol"] in Ticker().portfolio_tickers() or \
+                      any(ticker[checker] == "" for checker in immediate_criteria): continue
 
-res.plot()
+                # numeric comparison
+                lastsale = float(ticker[immediate_criteria[0]][1:])
+                volume = float(ticker[immediate_criteria[1]])
+                marketCap = float(ticker[immediate_criteria[2]])
+
+                # Step 2: eliminate low cost stocks, less volume, and bound the marketcap due to portfolio size
+                check_1 = lastsale > criteria["Immediate Criteria"][immediate_criteria[0]] \
+                    and volume > criteria["Immediate Criteria"][immediate_criteria[1]]
+                    
+                check_2 = marketCap >= criteria["Immediate Criteria"][immediate_criteria[2]]["min"] \
+                                and marketCap <= criteria["Immediate Criteria"][immediate_criteria[2]]["max"]
+
+                if check_1 and check_2:
+                    greater = criteria["Portfolio Criteria"]["Greater"]
+                    less_than = criteria["Portfolio Criteria"]["Less Than"]
+
+                    symbol = ticker["symbol"]
+
+                    # list of metrics for criteria
+                    metrics = list(greater.keys())
+                    metrics.extend(list(less_than.keys()))
+
+                    values = dict(filter(lambda item: item[0] in metrics, yf.Ticker(symbol).info.items()))
+                    
+                    try:
+                        # Step 3: select tickers whick satisfy all of these conditions
+                        check_3 = all(values[metric] > x for metric,x in greater.items()) 
+                        check_4 = all(values[metric] < x for metric,x in less_than.items())
+                        if check_3 and check_4:
+                            new_tickers.append(symbol)
+
+                    except KeyError:
+                        continue
+        
+        return new_tickers
+
+
+
+print(len(Ticker().get_all_tickers()))

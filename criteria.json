@@ -1,5 +1,4 @@
 {
-  "Exchanges": ["nyse", "nasdaq", "amex"],
   "Immediate Criteria": {
     "lastsale": 5,
     "volume": 200000,
