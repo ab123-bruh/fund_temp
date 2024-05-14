@@ -74,7 +74,7 @@ class Ticker:
         return new_tickers
 
     def recommended_tickers(self):
-        new_tickers = Ticker().shortlist_tickers()
+        new_tickers = []
 
         greater = self.criteria["Portfolio Criteria"]["Greater"]
         less_than = self.criteria["Portfolio Criteria"]["Less Than"]
@@ -83,7 +83,7 @@ class Ticker:
         metrics = list(greater.keys())
         metrics.extend(list(less_than.keys()))
 
-        for ticker in new_tickers:
+        for ticker in Ticker().shortlist_tickers():
             values = dict(filter(lambda item: item[0] in metrics, yf.Ticker(ticker).info.items()))
             
             try:
@@ -91,9 +91,7 @@ class Ticker:
                 check_3 = all(values[metric] > x for metric,x in greater.items()) 
                 check_4 = all(values[metric] < x for metric,x in less_than.items())
                 if check_3 and check_4:
-                    continue
-                else:
-                    new_tickers.remove(ticker)
+                    new_tickers.append(ticker)
 
             except KeyError:
                 continue
