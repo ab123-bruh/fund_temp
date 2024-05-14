@@ -37,8 +37,7 @@ for stock_ex in criteria["Exchanges"]:
         check_1 = lastsale > criteria["Immediate Criteria"][immediate_criteria[0]] \
             and volume > criteria["Immediate Criteria"][immediate_criteria[1]]
             
-        check_2 = marketCap >= criteria["Immediate Criteria"][immediate_criteria[2]]["min"] \
-                         and marketCap <= criteria["Immediate Criteria"][immediate_criteria[2]]["max"]
+        check_2 = marketCap <= criteria["Immediate Criteria"][immediate_criteria[2]]
 
         if check_1 and check_2:
             greater = criteria["Portfolio Criteria"]["Greater"]

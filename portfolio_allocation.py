@@ -16,7 +16,6 @@ class Ticker:
         tickers = []
 
         for stock_ex, check_exchange in zip(exchanges,get_exchanges):
-
             if check_exchange:
                 exchange =  "/" + stock_ex + "/" + stock_ex + "_tickers.txt"
                 resp = requests.get(self.github_branch + exchange).text.split("\n")
@@ -32,9 +31,11 @@ class Ticker:
     def add_portfolio_tickers(self, key: str, value: float):
         portfolio = self.criteria["Portfolio Weights"]
         portfolio[key] = value
-
     
-    def recommended_tickers(self):
+    def remove_portfolio_tickers(self):
+        pass
+    
+    def shortlist_tickers(self):
         new_tickers = []
 
         for stock_ex in self.criteria["Exchanges"]:
@@ -53,7 +54,7 @@ class Ticker:
                 # important to note that since the list of tickers is massive, need to find any method to narrow scope
 
                 # Step 1: Check to see if anything is blank from the full json file or ticker already in portfolio
-                if ticker["symbol"] in Ticker().portfolio_tickers() or \
+                if ticker["symbol"] in Ticker().get_portfolio_tickers() or \
                       any(ticker[checker] == "" for checker in immediate_criteria): continue
 
                 # numeric comparison
@@ -65,35 +66,42 @@ class Ticker:
                 check_1 = lastsale > self.criteria["Immediate Criteria"][immediate_criteria[0]] \
                     and volume > self.criteria["Immediate Criteria"][immediate_criteria[1]]
                     
-                check_2 = marketCap >= self.criteria["Immediate Criteria"][immediate_criteria[2]]["min"] \
-                                and marketCap <= self.criteria["Immediate Criteria"][immediate_criteria[2]]["max"]
+                check_2 = marketCap <= self.criteria["Immediate Criteria"][immediate_criteria[2]]
 
                 if check_1 and check_2:
-                    greater = self.criteria["Portfolio Criteria"]["Greater"]
-                    less_than = self.criteria["Portfolio Criteria"]["Less Than"]
+                     new_tickers.append(ticker["symbol"])
+            
+        return new_tickers
 
-                    symbol = ticker["symbol"]
+    def recommended_tickers(self):
+        new_tickers = Ticker().shortlist_tickers()
 
-                    # list of metrics for criteria
-                    metrics = list(greater.keys())
-                    metrics.extend(list(less_than.keys()))
-
-                    values = dict(filter(lambda item: item[0] in metrics, yf.Ticker(symbol).info.items()))
-                    
-                    try:
-                        # Step 3: select tickers whick satisfy all of these conditions
-                        check_3 = all(values[metric] > x for metric,x in greater.items()) 
-                        check_4 = all(values[metric] < x for metric,x in less_than.items())
-                        if check_3 and check_4:
-                            new_tickers.append(symbol)
-
-                    except KeyError:
-                        continue
+        greater = self.criteria["Portfolio Criteria"]["Greater"]
+        less_than = self.criteria["Portfolio Criteria"]["Less Than"]
         
+        # list of metrics for criteria
+        metrics = list(greater.keys())
+        metrics.extend(list(less_than.keys()))
+
+        for ticker in new_tickers:
+            values = dict(filter(lambda item: item[0] in metrics, yf.Ticker(ticker).info.items()))
+            
+            try:
+                # Step 3: select tickers whick satisfy all of these conditions
+                check_3 = all(values[metric] > x for metric,x in greater.items()) 
+                check_4 = all(values[metric] < x for metric,x in less_than.items())
+                if check_3 and check_4:
+                    continue
+                else:
+                    new_tickers.remove(ticker)
+
+            except KeyError:
+                continue
+
         return new_tickers
 
 
-tickers = Ticker().portfolio_tickers()
+tickers = Ticker().get_portfolio_tickers()
 
 tickers.extend(Ticker().recommended_tickers())
 
