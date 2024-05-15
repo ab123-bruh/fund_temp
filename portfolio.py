@@ -3,13 +3,43 @@ import os
 import requests
 import yfinance as yf
 
+criteria = json.loads(open(os.getcwd() + "\\criteria.json","r").read())
+
+class Basket:
+    def __init__(self):
+        self.portfolio = criteria["Portfolio Weights"]
+        
+    def get_portfolio(self):
+        return self.portfolio
+    
+    def update_portfolio(self, key: str, value: float):
+        if key not in list(self.portfolio.keys()):
+            raise KeyError("The key needs to be added to the portfolio first.")
+
+        # self.portfolio.update
+    
+    def add_portfolio(self, key: str, value: float):
+        values = sum(list(self.portfolio.values()))
+
+        if key in list(self.portfolio.keys()):
+            raise KeyError(key + "is already in portfolio. If you want to change the weight, update portfolio instead.")
+        elif values + value > 1:
+            raise ValueError("The max value you can add is " + str(1-values) + " based on current portfolio.")
+
+        self.portfolio[key] = value
+    
+    def remove_portfolio(self, key: str):
+        try:
+            del self.portfolio[key]
+        except KeyError:
+            pass
+
 class Ticker:
     def __init__(self):
-        self.criteria = json.loads(open(os.getcwd() + "\\criteria.json","r").read())
         self.github_branch = "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main"
     
     def get_all_tickers(self,NYSE=True,AMEX=True,NASDAQ=True):
-        exchanges = self.criteria["Exchanges"]
+        exchanges = criteria["Exchanges"]
 
         get_exchanges = [NYSE,NASDAQ,AMEX]
 
@@ -25,20 +55,10 @@ class Ticker:
         
         return tickers
     
-    def get_portfolio_tickers(self):
-        return list(self.criteria["Portfolio Weights"].keys())
-    
-    def add_portfolio_tickers(self, key: str, value: float):
-        portfolio = self.criteria["Portfolio Weights"]
-        portfolio[key] = value
-    
-    def remove_portfolio_tickers(self):
-        pass
-    
     def shortlist_tickers(self):
         new_tickers = []
 
-        for stock_ex in self.criteria["Exchanges"]:
+        for stock_ex in criteria["Exchanges"]:
             exchange =  "/" + stock_ex + "/" + stock_ex + "_full_tickers.json" 
 
             url = self.github_branch + exchange # combining the repository dataset with the specific exchange
@@ -49,12 +69,12 @@ class Ticker:
             for i in range(len(data)):
                 ticker = data[i]
 
-                immediate_criteria = list(self.criteria["Immediate Criteria"].keys()) # ["lastsale", "volume", "marketCap"]
+                immediate_criteria = list(criteria["Immediate Criteria"].keys()) # ["lastsale", "volume", "marketCap"]
                 
                 # important to note that since the list of tickers is massive, need to find any method to narrow scope
 
                 # Step 1: Check to see if anything is blank from the full json file or ticker already in portfolio
-                if ticker["symbol"] in Ticker().get_portfolio_tickers() or \
+                if ticker["symbol"] in Basket().get_portfolio() or \
                       any(ticker[checker] == "" for checker in immediate_criteria): continue
 
                 # numeric comparison
@@ -73,11 +93,11 @@ class Ticker:
             
         return new_tickers
 
-    def recommended_tickers(self):
+    def recommend_tickers(self):
         new_tickers = []
 
-        greater = self.criteria["Portfolio Criteria"]["Greater"]
-        less_than = self.criteria["Portfolio Criteria"]["Less Than"]
+        greater = criteria["Portfolio Criteria"]["Greater"]
+        less_than = criteria["Portfolio Criteria"]["Less Than"]
         
         # list of metrics for criteria
         metrics = list(greater.keys())
@@ -94,13 +114,6 @@ class Ticker:
                     new_tickers.append(ticker)
 
             except KeyError:
-                continue
+                new_tickers.remove(ticker)
 
         return new_tickers
-
-
-tickers = Ticker().get_portfolio_tickers()
-
-tickers.extend(Ticker().recommended_tickers())
-
-print(tickers)
