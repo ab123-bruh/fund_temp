@@ -5,34 +5,45 @@ import yfinance as yf
 
 criteria = json.loads(open(os.getcwd() + "\\criteria.json","r").read())
 
+# This class is useless in the library until we generate a general criteria dictionary for users in the end product
+class Criteria:
+    def __init__(self) -> None:
+        pass
+
+    def update_criteria(self, key: str, value):
+        if key in list(criteria.keys()):
+            criteria.update({key: value})
+        else:
+            criteria[key] = value
+    
+    def remove_criteria(self, key: str):
+        try:
+            del criteria[key]
+        except KeyError:
+            print("This wasn't originally in the criteria that was set.")
+        
 class Basket:
     def __init__(self):
         self.portfolio = criteria["Portfolio Weights"]
+        self.tickers = list(self.portfolio.keys())
+        self.values = list(self.portfolio.values())
         
     def get_portfolio(self):
         return self.portfolio
     
     def update_portfolio(self, key: str, value: float):
-        if key not in list(self.portfolio.keys()):
-            raise KeyError("The key needs to be added to the portfolio first.")
-
-        # self.portfolio.update
-    
-    def add_portfolio(self, key: str, value: float):
-        values = sum(list(self.portfolio.values()))
-
-        if key in list(self.portfolio.keys()):
-            raise KeyError(key + "is already in portfolio. If you want to change the weight, update portfolio instead.")
-        elif values + value > 1:
-            raise ValueError("The max value you can add is " + str(1-values) + " based on current portfolio.")
-
-        self.portfolio[key] = value
-    
-    def remove_portfolio(self, key: str):
+        if sum(self.values) + value > 1:
+            raise ValueError("Max for current portfolio is " + str(1-sum(self.values)) + "based on current portfolio.")
+        elif key in self.tickers:
+            self.portfolio.update({key: value})
+        else:
+            self.portfolio[key] = value
+            
+    def remove_ticker(self, key: str):
         try:
             del self.portfolio[key]
         except KeyError:
-            pass
+            print("This ticker was not in the portfolio.")
 
 class Ticker:
     def __init__(self):
@@ -78,10 +89,10 @@ class Ticker:
                 volume = float(ticker[immediate_criteria[1]])
                 marketCap = float(ticker[immediate_criteria[2]])
 
-                check_1 = lastsale > self.criteria["Immediate Criteria"][immediate_criteria[0]] \
-                    and volume > self.criteria["Immediate Criteria"][immediate_criteria[1]]
+                check_1 = lastsale > criteria["Immediate Criteria"][immediate_criteria[0]] \
+                    and volume > criteria["Immediate Criteria"][immediate_criteria[1]]
                     
-                check_2 = marketCap <= self.criteria["Immediate Criteria"][immediate_criteria[2]]
+                check_2 = marketCap <= criteria["Immediate Criteria"][immediate_criteria[2]]
 
                 if check_1 and check_2:
                      new_tickers.append(ticker["symbol"])
@@ -89,6 +100,7 @@ class Ticker:
         return new_tickers
 
     def recommend_tickers(self):
+        tickers = Ticker().shortlist_tickers()
         new_tickers = []
 
         greater = criteria["Portfolio Criteria"]["Greater"]
@@ -98,7 +110,7 @@ class Ticker:
         metrics = list(greater.keys())
         metrics.extend(list(less_than.keys()))
 
-        for ticker in Ticker().shortlist_tickers():
+        for ticker in tickers:
             values = dict(filter(lambda item: item[0] in metrics, yf.Ticker(ticker).info.items()))
             
             try:
@@ -111,3 +123,10 @@ class Ticker:
                 continue
 
         return new_tickers
+
+# This is the model in which we write the algorthim to decide how to allocate portfolio weights 
+# This will ultimately output a dataset which all the user needs to do is just use the backtesting functionality
+# that we end up writing out in a python notebook to get the plots that we need to analyze what we are working on
+class PortfolioModel:
+    def __init__(self) -> None:
+        pass
