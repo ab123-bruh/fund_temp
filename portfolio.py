@@ -108,6 +108,6 @@ class Ticker:
                     new_tickers.append(ticker)
 
             except KeyError:
-                new_tickers.remove(ticker)
+                continue
 
         return new_tickers
