@@ -38,18 +38,15 @@ class Ticker:
     def __init__(self):
         self.github_branch = "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main"
     
-    def get_all_tickers(self,NYSE=True,AMEX=True,NASDAQ=True):
+    def get_all_tickers(self):
         exchanges = criteria["Exchanges"]
-
-        get_exchanges = [NYSE,NASDAQ,AMEX]
 
         tickers = []
 
-        for stock_ex, check_exchange in zip(exchanges,get_exchanges):
-            if check_exchange:
-                exchange =  "/" + stock_ex + "/" + stock_ex + "_tickers.txt"
-                resp = requests.get(self.github_branch + exchange).text.split("\n")
-                tickers.extend(resp)
+        for stock_ex in exchanges:
+            exchange =  "/" + stock_ex + "/" + stock_ex + "_tickers.txt"
+            resp = requests.get(self.github_branch + exchange).text.split("\n")
+            tickers.extend(resp)
 
         tickers.sort()
         
@@ -73,7 +70,6 @@ class Ticker:
                 
                 # important to note that since the list of tickers is massive, need to find any method to narrow scope
 
-                # Step 1: Check to see if anything is blank from the full json file or ticker already in portfolio
                 if ticker["symbol"] in Basket().get_portfolio() or \
                       any(ticker[checker] == "" for checker in immediate_criteria): continue
 
@@ -82,7 +78,6 @@ class Ticker:
                 volume = float(ticker[immediate_criteria[1]])
                 marketCap = float(ticker[immediate_criteria[2]])
 
-                # Step 2: eliminate low cost stocks, less volume, and bound the marketcap due to portfolio size
                 check_1 = lastsale > self.criteria["Immediate Criteria"][immediate_criteria[0]] \
                     and volume > self.criteria["Immediate Criteria"][immediate_criteria[1]]
                     
@@ -107,7 +102,6 @@ class Ticker:
             values = dict(filter(lambda item: item[0] in metrics, yf.Ticker(ticker).info.items()))
             
             try:
-                # Step 3: select tickers whick satisfy all of these conditions
                 check_3 = all(values[metric] > x for metric,x in greater.items()) 
                 check_4 = all(values[metric] < x for metric,x in less_than.items())
                 if check_3 and check_4:
