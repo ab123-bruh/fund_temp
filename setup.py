@@ -4,24 +4,7 @@ import requests
 import yfinance as yf
 
 criteria = json.loads(open(os.getcwd() + "\\criteria.json","r").read())
-
-# This class is useless in the library until we generate a general criteria dictionary for users in the end product
-class Criteria:
-    def __init__(self) -> None:
-        pass
-
-    def update_criteria(self, key: str, value):
-        if key in list(criteria.keys()):
-            criteria.update({key: value})
-        else:
-            criteria[key] = value
-    
-    def remove_criteria(self, key: str):
-        try:
-            del criteria[key]
-        except KeyError:
-            print("This wasn't originally in the criteria that was set.")
-        
+  
 class Basket:
     def __init__(self):
         self.portfolio = criteria["Portfolio Weights"]
@@ -33,7 +16,7 @@ class Basket:
     
     def update_portfolio(self, key: str, value: float):
         if sum(self.values) + value > 1:
-            raise ValueError("Max for current portfolio is " + str(1-sum(self.values)) + "based on current portfolio.")
+            raise ValueError("Max for current portfolio is " + str(1-sum(self.values)) + " based on current portfolio.")
         elif key in self.tickers:
             self.portfolio.update({key: value})
         else:
@@ -123,10 +106,3 @@ class Ticker:
                 continue
 
         return new_tickers
-
-# This is the model in which we write the algorthim to decide how to allocate portfolio weights 
-# This will ultimately output a dataset which all the user needs to do is just use the backtesting functionality
-# that we end up writing out in a python notebook to get the plots that we need to analyze what we are working on
-class PortfolioModel:
-    def __init__(self) -> None:
-        pass
