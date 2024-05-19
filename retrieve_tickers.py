@@ -8,16 +8,15 @@ criteria = json.loads(open(os.getcwd() + "\\criteria.json","r").read())
 class Basket:
     def __init__(self):
         self.portfolio = criteria["Portfolio Weights"]
-        self.tickers = list(self.portfolio.keys())
-        self.values = list(self.portfolio.values())
         
     def get_portfolio(self):
         return self.portfolio
     
     def update_portfolio(self, key: str, value: float):
-        if sum(self.values) + value > 1:
-            raise ValueError("Max for current portfolio is " + str(1-sum(self.values)) + " based on current portfolio.")
-        elif key in self.tickers:
+        values = list(self.portfolio.values())
+        if sum(values) + value > 1:
+            raise ValueError("Max for current portfolio is " + str(1-sum(values)) + " based on current portfolio.")
+        elif key in list(self.portfolio.keys()):
             self.portfolio.update({key: value})
         else:
             self.portfolio[key] = value
@@ -60,24 +59,25 @@ class Ticker:
             for i in range(len(data)):
                 ticker = data[i]
 
-                immediate_criteria = list(criteria["Immediate Criteria"].keys()) # ["lastsale", "volume", "marketCap"]
+                check_1 = ticker["symbol"] in list(Basket().get_portfolio().keys())
+                check_2 = any(ticker[checker] == "" for checker in list(criteria["Immediate Criteria"].keys()))
                 
                 # important to note that since the list of tickers is massive, need to find any method to narrow scope
 
-                if ticker["symbol"] in Basket().get_portfolio() or \
-                      any(ticker[checker] == "" for checker in immediate_criteria): continue
+                if check_1 or check_2: 
+                    continue
 
                 # numeric comparison
-                lastsale = float(ticker[immediate_criteria[0]][1:])
-                volume = float(ticker[immediate_criteria[1]])
-                marketCap = float(ticker[immediate_criteria[2]])
+                lastsale = float(ticker["lastsale"][1:])
+                volume = float(ticker["volume"])
+                marketCap = float(ticker["marketCap"])
 
-                check_1 = lastsale > criteria["Immediate Criteria"][immediate_criteria[0]] \
-                    and volume > criteria["Immediate Criteria"][immediate_criteria[1]]
+                check_3 = lastsale > criteria["Immediate Criteria"]["lastsale"] and \
+                    volume > criteria["Immediate Criteria"]["volume"]
                     
-                check_2 = marketCap <= criteria["Immediate Criteria"][immediate_criteria[2]]
+                check_4 = marketCap <= criteria["Immediate Criteria"]["marketCap"]
 
-                if check_1 and check_2:
+                if check_3 and check_4:
                      new_tickers.append(ticker["symbol"])
             
         return new_tickers
@@ -106,3 +106,17 @@ class Ticker:
                 continue
 
         return new_tickers
+
+# Will be uncommented once its usable
+
+# class DataClean:
+#     def __init__(self, symbols: list):
+#         self.symbols = symbols
+    
+#     def add_multiple_tickers(self, tickers: list):
+#         pass
+    
+#     def get_historical_data(self, period: str):
+#         self.symbols.extend(DataClean().add_multiple_tickers())
+
+#         return yf.download(tickers=self.symbols,period=period)
