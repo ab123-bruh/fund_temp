@@ -30,25 +30,23 @@ class Basket:
 class Ticker:
     def __init__(self):
         self.github_branch = "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main"
+        self.exchanges = criteria["Exchanges"]
     
     def get_all_tickers(self):
-        exchanges = criteria["Exchanges"]
+        tickers = {}
 
-        tickers = []
-
-        for stock_ex in exchanges:
+        for stock_ex in self.exchanges:
             exchange =  "/" + stock_ex + "/" + stock_ex + "_tickers.txt"
-            resp = requests.get(self.github_branch + exchange).text.split("\n")
-            tickers.extend(resp)
-
-        tickers.sort()
+            resp = requests.get(self.github_branch + exchange)
+            data = resp.text.split("\n")
+            tickers[stock_ex] = data
         
         return tickers
     
     def shortlist_tickers(self):
         new_tickers = []
 
-        for stock_ex in criteria["Exchanges"]:
+        for stock_ex in self.exchanges:
             exchange =  "/" + stock_ex + "/" + stock_ex + "_full_tickers.json" 
 
             url = self.github_branch + exchange # combining the repository dataset with the specific exchange
