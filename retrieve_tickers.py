@@ -121,18 +121,14 @@ class Ticker:
         return new_tickers
 
 # Will be uncommented once its usable
-
-# class DataClean:
-#     def __init__(self, symbols: list):
-#         self.symbols = symbols
+class DataClean:
+    def __init__(self, symbols: list):
+        self.symbols = symbols
     
-#     def add_multiple_tickers(self, tickers: list):
-#         pass
+    def add_multiple_tickers(self, tickers: list):
+        pass
     
-#     def get_historical_data(self, period: str):
-#         self.symbols.extend(DataClean().add_multiple_tickers())
+    def get_historical_data(self, period: str):
+        self.symbols.extend(DataClean().add_multiple_tickers())
 
-#         return yf.download(tickers=self.symbols,period=period)
-
-
-print(Ticker().recommend_tickers())
+        return yf.download(tickers=self.symbols,period=period)
