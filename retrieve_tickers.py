@@ -3,16 +3,31 @@ import os
 import requests
 import yfinance as yf
 import numpy as np
+from concurrent.futures import ThreadPoolExecutor
 
 criteria = json.loads(open(os.getcwd() + "\\criteria.json","r").read())
   
 class Basket:
     def __init__(self):
         self.portfolio = criteria["Portfolio Weights"]
+        self.greater = criteria["Portfolio Criteria"]["Greater"]
+        self.less_than = criteria["Portfolio Criteria"]["Less Than"]
         
     def get_portfolio(self):
         return self.portfolio
     
+    def get_immediate_criteria(self):
+        return criteria["Immediate Criteria"]
+    
+    def get_greater_criteria(self):
+        return self.greater
+
+    def get_less_criteria(self):
+        return self.less_than
+    
+    def get_metrics(self):
+        return list(self.greater.keys()) + list(self.less_than.keys())
+        
     def update_portfolio(self, key: str, value: float):
         values = list(self.portfolio.values())
         if sum(values) + value > 1:
@@ -28,7 +43,7 @@ class Basket:
         except KeyError:
             print("This ticker was not in the portfolio.")
 
-class Ticker:
+class GetTicker:
     def __init__(self):
         self.github_branch = "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main"
         self.exchanges = criteria["Exchanges"]
@@ -45,10 +60,10 @@ class Ticker:
         return tickers
     
     def shortlist_tickers(self):
-        tickers = Ticker().get_all_tickers()
+        tickers = GetTicker().get_all_tickers()
         new_tickers = []
 
-        crit = list(criteria["Immediate Criteria"].keys())
+        crit = list(Basket().get_immediate_criteria().keys())
 
         for stock_ex in self.exchanges:
             data = tickers[stock_ex]
@@ -93,42 +108,52 @@ class Ticker:
         new_tickers = [tick.replace("/",".") for tick in new_tickers if "^" not in tick]
 
         return new_tickers
-
+    
+    def get_yahoo_info(self,ticker: str):
+        metrics = Basket().get_metrics()
+        try:
+            value = {ticker: dict(filter(lambda item: item[0] in metrics, yf.Ticker(ticker).info.items()))}
+        except:
+            value = {ticker: {}}
+        
+        return value
 
     def recommend_tickers(self):
-        tickers = Ticker().shortlist_tickers()
+        tickers = GetTicker().shortlist_tickers()
+        metrics = Basket().get_metrics()
+
+        with ThreadPoolExecutor() as executor:
+            ticker_data = list(executor.map(GetTicker().get_yahoo_info, tickers))
+        
+        ticker_data = [e for e in ticker_data if len(list(e[list(e.keys())[0]].keys())) == len(metrics)]
+        
+        metric_values = {metric: [] for metric in metrics}
+
         new_tickers = []
 
-        greater = criteria["Portfolio Criteria"]["Greater"]
-        less_than = criteria["Portfolio Criteria"]["Less Than"]
+        for ticker in ticker_data:
+            tick = list(ticker.keys())[0]
+            new_tickers.append(tick)
+            for metric in metrics:
+                value = ticker[tick].get(metric, np.nan)
+                metric_values[metric].append(value)
         
-        # list of metrics for criteria
-        metrics = list(greater.keys())
-        metrics.extend(list(less_than.keys()))
+        metric_arrays = {metric: np.array(values) for metric, values in metric_values.items()}
 
-        for ticker in tickers:
-            values = dict(filter(lambda item: item[0] in metrics, yf.Ticker(ticker).info.items()))
+        # Create boolean arrays for the conditions
+        check_3 = np.ones(len(new_tickers), dtype=bool)
+        check_4 = np.ones(len(new_tickers), dtype=bool)
+
+        for metric, x in Basket().get_greater_criteria().items():
+            check_3 &= metric_arrays[metric] > x
+
+        for metric, x in Basket().get_less_criteria().items():
+            check_4 &= metric_arrays[metric] < x
             
-            try:
-                check_3 = all(values[metric] > x for metric,x in greater.items()) 
-                check_4 = all(values[metric] < x for metric,x in less_than.items())
-                if check_3 and check_4:
-                    new_tickers.append(ticker)
+        # Combine the conditions
+        final_check = check_3 & check_4
 
-            except KeyError:
-                continue
-
+        # Get the final list of tickers that meet the conditions
+        new_tickers = np.array(new_tickers)[final_check].tolist()
+        
         return new_tickers
-
-# Will be uncommented once its usable
-class DataClean:
-    def __init__(self, symbols: list):
-        self.symbols = symbols
-    
-    def add_multiple_tickers(self, tickers: list):
-        pass
-    
-    def get_historical_data(self, period: str):
-        self.symbols.extend(DataClean().add_multiple_tickers())
-
-        return yf.download(tickers=self.symbols,period=period)
