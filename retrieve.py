@@ -56,9 +56,9 @@ class GetTicker:
             exchange =  "/" + stock_ex + "/" + stock_ex + self.file
             resp = requests.get(self.github_branch + exchange)
             tickers[stock_ex] = json.loads(resp.text)
-        
+
         if symbol_only is True:
-            return [tick[list(tick.keys())[0]] for tick in tickers]
+            return [tickers[stock_ex][i]["symbol"] for stock_ex, i in zip(self.exchanges, range(len(tickers)))]
         
         return tickers
     
