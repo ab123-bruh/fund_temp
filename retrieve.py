@@ -49,13 +49,16 @@ class GetTicker:
         self.exchanges = criteria["Exchanges"]
         self.file =  "_full_tickers.json"
     
-    def get_all_tickers(self):
+    def get_all_tickers(self,symbol_only=False):
         tickers = {}
 
         for stock_ex in self.exchanges:
             exchange =  "/" + stock_ex + "/" + stock_ex + self.file
             resp = requests.get(self.github_branch + exchange)
             tickers[stock_ex] = json.loads(resp.text)
+        
+        if symbol_only is True:
+            return [tick[list(tick.keys())[0]] for tick in tickers]
         
         return tickers
     
