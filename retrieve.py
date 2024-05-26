@@ -58,9 +58,15 @@ class GetTicker:
             tickers[stock_ex] = json.loads(resp.text)
 
         if symbol_only is True:
-            return [tickers[stock_ex][i]["symbol"] for stock_ex, i in zip(self.exchanges, range(len(tickers)))]
+            symbols = []
+            for stock_ex in self.exchanges:
+                for i in range(len(tickers[stock_ex])):
+                    symbols.append(tickers[stock_ex][i]["symbol"])
+            
+            return symbols
         
-        return tickers
+        else:
+            return tickers
     
     def shortlist_tickers(self):
         tickers = GetTicker().get_all_tickers()
@@ -160,3 +166,5 @@ class GetTicker:
         new_tickers = np.array(new_tickers)[final_check].tolist()
         
         return new_tickers
+
+print(GetTicker().get_all_tickers(symbol_only=True))
