@@ -166,5 +166,3 @@ class GetTicker:
         new_tickers = np.array(new_tickers)[final_check].tolist()
         
         return new_tickers
-
-print(GetTicker().get_all_tickers(symbol_only=True))
