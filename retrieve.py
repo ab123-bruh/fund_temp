@@ -6,7 +6,7 @@ import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 
 criteria = json.loads(open(os.getcwd() + "\\criteria.json","r").read())
-  
+
 class Basket:
     def __init__(self):
         self.portfolio = criteria["Portfolio Weights"]
@@ -26,12 +26,16 @@ class Basket:
         return self.less_than
     
     def get_metrics(self):
-        return list(self.greater.keys()) + list(self.less_than.keys())
+        metrics = list(self.greater.keys())
+        metrics.extend(list(self.less_than.keys()))
+        return metrics
         
     def update_portfolio(self, key: str, value: float):
         values = list(self.portfolio.values())
-        if sum(values) + value > 1:
-            raise ValueError("Max for current portfolio is " + str(1-sum(values)) + " based on current portfolio.")
+        if value <= 0:
+            raise ValueError("To add to portfolio, the ticker weight must be greater than 0")
+        elif sum(values) + value > 1:
+            raise ValueError("Max for current portfolio is " + str(1-sum(values)) + " based on current portfolio.")            
         elif key in list(self.portfolio.keys()):
             self.portfolio.update({key: value})
         else:
@@ -118,7 +122,7 @@ class GetTicker:
 
         return new_tickers
     
-    def get_yahoo_info(self,ticker: str):
+    def get_info(self,ticker: str):
         metrics = Basket().get_metrics()
         try:
             value = {ticker: dict(filter(lambda item: item[0] in metrics, yf.Ticker(ticker).info.items()))}
@@ -132,7 +136,7 @@ class GetTicker:
         metrics = Basket().get_metrics()
 
         with ThreadPoolExecutor() as executor:
-            ticker_data = list(executor.map(GetTicker().get_yahoo_info, tickers))
+            ticker_data = list(executor.map(GetTicker().get_info, tickers))
         
         ticker_data = [e for e in ticker_data if len(list(e[list(e.keys())[0]].keys())) == len(metrics)]
         

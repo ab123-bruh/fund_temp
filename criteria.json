@@ -3,18 +3,17 @@
   "Immediate Criteria": {
     "lastsale": 5,
     "volume": 200000,
-    "marketCap": 15000000000
+    "marketCap": 2000000000
   },
   "Portfolio Criteria": {
     "Greater": {
-      "revenueGrowth": 0.05,
+      "revenueGrowth": 0.30,
       "profitMargins": 0.15,
       "quickRatio": 1
     },
     "Less Than": {
       "priceToBook": 10,
       "debtToEquity": 1,
-      "pegRatio": 5,
       "beta": 1
     }
   },
