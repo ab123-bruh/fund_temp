@@ -7,14 +7,10 @@ from concurrent.futures import ThreadPoolExecutor
 
 criteria = json.loads(open(os.getcwd() + "\\criteria.json","r").read())
 
-class Basket:
+class Criteria:
     def __init__(self):
-        self.portfolio = criteria["Portfolio Weights"]
         self.greater = criteria["Portfolio Criteria"]["Greater"]
         self.less_than = criteria["Portfolio Criteria"]["Less Than"]
-        
-    def get_portfolio(self):
-        return self.portfolio
     
     def get_immediate_criteria(self):
         return criteria["Immediate Criteria"]
@@ -29,7 +25,24 @@ class Basket:
         metrics = list(self.greater.keys())
         metrics.extend(list(self.less_than.keys()))
         return metrics
+
+class Basket:
+    def __init__(self):
+        self.portfolio = criteria["Portfolio Weights"]
         
+    def get_portfolio(self):
+        return self.portfolio
+    
+    def get_info(self,ticker: str):
+        value = {}
+        try:
+            value[ticker] = dict(filter(lambda item: item[0] in Criteria().get_metrics(), 
+                                        yf.Ticker(ticker).info.items()))
+        except:
+            value[ticker] = {}
+        
+        return value
+    
     def update_portfolio(self, key: str, value: float):
         values = list(self.portfolio.values())
         if value <= 0:
@@ -46,8 +59,8 @@ class Basket:
             del self.portfolio[key]
         except KeyError:
             print("This ticker was not in the portfolio.")
-
-class GetTicker:
+    
+class RecommendTickers:
     def __init__(self):
         self.github_branch = "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main"
         self.exchanges = criteria["Exchanges"]
@@ -73,7 +86,7 @@ class GetTicker:
             return tickers
     
     def shortlist_tickers(self):
-        tickers = GetTicker().get_all_tickers()
+        tickers = RecommendTickers().get_all_tickers()
         new_tickers = []
 
         crit = list(Basket().get_immediate_criteria().keys())
@@ -121,22 +134,13 @@ class GetTicker:
         new_tickers = [tick.replace("/",".") for tick in new_tickers if "^" not in tick]
 
         return new_tickers
-    
-    def get_info(self,ticker: str):
-        metrics = Basket().get_metrics()
-        try:
-            value = {ticker: dict(filter(lambda item: item[0] in metrics, yf.Ticker(ticker).info.items()))}
-        except:
-            value = {ticker: {}}
-        
-        return value
 
     def recommend_tickers(self):
-        tickers = GetTicker().shortlist_tickers()
-        metrics = Basket().get_metrics()
+        tickers = RecommendTickers().shortlist_tickers()
+        metrics = Criteria().get_metrics()
 
         with ThreadPoolExecutor() as executor:
-            ticker_data = list(executor.map(GetTicker().get_info, tickers))
+            ticker_data = list(executor.map(Basket().get_info, tickers))
         
         ticker_data = [e for e in ticker_data if len(list(e[list(e.keys())[0]].keys())) == len(metrics)]
         
@@ -157,10 +161,10 @@ class GetTicker:
         check_3 = np.ones(len(new_tickers), dtype=bool)
         check_4 = np.ones(len(new_tickers), dtype=bool)
 
-        for metric, x in Basket().get_greater_criteria().items():
+        for metric, x in Criteria().get_greater_criteria().items():
             check_3 &= metric_arrays[metric] > x
 
-        for metric, x in Basket().get_less_criteria().items():
+        for metric, x in Criteria().get_less_criteria().items():
             check_4 &= metric_arrays[metric] < x
             
         # Combine the conditions
