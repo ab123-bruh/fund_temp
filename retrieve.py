@@ -33,16 +33,6 @@ class Basket:
     def get_portfolio(self):
         return self.portfolio
     
-    def get_info(self,ticker: str):
-        value = {}
-        try:
-            value[ticker] = dict(filter(lambda item: item[0] in Criteria().get_metrics(), 
-                                        yf.Ticker(ticker).info.items()))
-        except:
-            value[ticker] = {}
-        
-        return value
-    
     def update_portfolio(self, key: str, value: float):
         values = list(self.portfolio.values())
         if value <= 0:
@@ -60,7 +50,7 @@ class Basket:
         except KeyError:
             print("This ticker was not in the portfolio.")
     
-class RecommendTickers:
+class RecommendTicker:
     def __init__(self):
         self.github_branch = "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main"
         self.exchanges = criteria["Exchanges"]
@@ -86,10 +76,10 @@ class RecommendTickers:
             return tickers
     
     def shortlist_tickers(self):
-        tickers = RecommendTickers().get_all_tickers()
+        tickers = RecommendTicker().get_all_tickers()
         new_tickers = []
 
-        crit = list(Basket().get_immediate_criteria().keys())
+        crit = list(Criteria().get_immediate_criteria().keys())
 
         for stock_ex in self.exchanges:
             data = tickers[stock_ex]
@@ -136,11 +126,22 @@ class RecommendTickers:
         return new_tickers
 
     def recommend_tickers(self):
-        tickers = RecommendTickers().shortlist_tickers()
         metrics = Criteria().get_metrics()
 
+        def get_info(ticker: str):
+            value = {}
+            try:
+                value[ticker] = dict(filter(lambda item: item[0] in metrics, 
+                                            yf.Ticker(ticker).info.items()))
+            except:
+                value[ticker] = {}
+            
+            return value
+
+        tickers = RecommendTicker().shortlist_tickers()
+
         with ThreadPoolExecutor() as executor:
-            ticker_data = list(executor.map(Basket().get_info, tickers))
+            ticker_data = list(executor.map(get_info, tickers))
         
         ticker_data = [e for e in ticker_data if len(list(e[list(e.keys())[0]].keys())) == len(metrics)]
         

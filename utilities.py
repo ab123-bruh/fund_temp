@@ -32,10 +32,29 @@ class PortfolioAnalytics:
     def __init__(self):
         self.portfolio = Basket().get_portfolio()
     
+    def portfolio_data(self):
+        data = TickerData(list(self.portfolio.keys(),"2020-01-01"))
+        return data.get_historical_data()
+                             
     def portfolio_volatility(self):
-        Q = TickerData(list(self.portfolio.keys()),"2020-01-01").get_historical_data().cov()
+        Q = PortfolioAnalytics().portfolio_data().cov()
         w = np.array(list(self.portfolio.values()))
 
         var = np.matmul(np.matmul(w.T,Q),w)
 
         return np.sqrt(var)
+    
+    def portfolio_beta(self):
+        # building the table for portfolio beta here
+        pass
+    
+    def hypothetical_return(self):
+        pass
+    
+    def exploratory_analysis(self):
+        pass
+
+    def simulations(self):
+        pass
+
+
