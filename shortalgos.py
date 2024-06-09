@@ -4,8 +4,5 @@ import yfinance as yf
 def tail_action():
     pass
 
-def event_action():
-    pass
-
-def option_flow():
+def event_flow():
     pass
