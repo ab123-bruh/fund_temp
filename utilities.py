@@ -1,3 +1,4 @@
+import pandas as pd
 import yfinance as yf
 import numpy as np
 from retrieve import Basket
@@ -66,8 +67,14 @@ class PortfolioAnalytics:
         return np.sqrt(var)
     
     def portfolio_beta(self):
-        # building the table for portfolio beta here
-        pass
+        beta = {}
+
+        keys = ["weights", ""]
+
+        beta["weights"]
+
+
+
     
     def hypothetical_return(self):
         pass
