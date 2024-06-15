@@ -1,7 +1,7 @@
 import pandas as pd
 import yfinance as yf
 import numpy as np
-from retrieve import Basket
+from retrieve import Basket 
 
 class TickerData:
     def __init__(self, ticker: str):
@@ -59,7 +59,7 @@ class PortfolioAnalytics:
         return df
                              
     def portfolio_volatility(self):
-        Q = PortfolioAnalytics().portfolio_data().cov()
+        Q = PortfolioAnalytics(self.start_date).portfolio_data().cov()
         w = np.array(list(self.portfolio.values()))
 
         var = np.matmul(np.matmul(w.T,Q),w)
@@ -67,17 +67,16 @@ class PortfolioAnalytics:
         return np.sqrt(var)
     
     def portfolio_beta(self):
-        beta = {}
+        beta = 0
 
-        keys = ["weights", ""]
-
-        beta["weights"]
-
-
-
+        for tick,weight in self.portfolio.items():
+            try:
+                beta += (weight*yf.Ticker(tick).info["beta"])
+            except:
+                continue
+        
+        return beta
     
-    def hypothetical_return(self):
-        pass
+    
 
-    def simulations(self):
-        pass
+print(PortfolioAnalytics("2020-01-01").portfolio_volatility())
