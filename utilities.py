@@ -2,6 +2,7 @@ import pandas as pd
 import yfinance as yf
 import numpy as np
 from retrieve import Basket 
+import datetime as dt
 
 class TickerData:
     def __init__(self, ticker: str):
@@ -77,6 +78,34 @@ class PortfolioAnalytics:
         
         return beta
     
-    
+    def risk_metrics(self):
+        def percent_change(df: pd.DataFrame, tick: str):
+            return ((df[tick].iloc[len(df)-1]/df[tick].iloc[0])-1).round(decimals=4)
+        
+        stats = {}
 
-print(PortfolioAnalytics("2020-01-01").portfolio_volatility())
+        date = dt.date(dt.date.today().year,1,1).strftime("%Y-%m-%d")
+
+        tick_compares = TickerData("IWF VTV SPY ^VIX SIZE").get_historical_data(start_date=date)
+        tick_compares = tick_compares.reset_index()
+
+        treasury = pd.read_html("https://www.multpl.com/10-year-treasury-rate/table/by-year")
+        devi_ratio = round(tick_compares["^VIX"].std()/tick_compares["SPY"].std(),4)
+
+        stats["BenchmarkReturn"] = percent_change(tick_compares,"SPY")
+        stats["RiskFree"] = round(float(treasury[0].iloc[0,1][:-1])/100,4)
+
+        stats["RiskPremium"] = stats["BenchmarkReturn"] - stats["RiskFree"] 
+        stats["GrowthPremium"] = percent_change(tick_compares,"IWF")-stats["RiskFree"]
+        stats["ValuePremium"] = percent_change(tick_compares,"VTV")-stats["RiskFree"]
+        stats["SizePremium"] = percent_change(tick_compares,"SIZE")-stats["RiskFree"]
+
+        stats["VIX/SPY Corr"] = tick_compares.corr(numeric_only=True).loc["^VIX", "SPY"].round(decimals=4)
+        stats["VIX/SPY Beta"] = stats["VIX/SPY Corr"]*devi_ratio
+
+        stats["ExpectedReturn"] = PortfolioAnalytics(date).portfolio_beta()*stats["RiskPremium"]+stats["RiskFree"]
+
+        return pd.DataFrame(stats,index=["Stats"]).T
+
+
+print(PortfolioAnalytics("2020-01-01").risk_metrics())
