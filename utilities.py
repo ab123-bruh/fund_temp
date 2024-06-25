@@ -13,22 +13,15 @@ class TickerData:
     
     def ticker_volatility(self,start_date: str):
         return self.get_historical_data(start_date).std()
-
-    def financial_statements(self,quarterly=True):
-        financials = {}
-
-        symbol = yf.Ticker(self.ticker)
-
-        if quarterly is False:
-            financials["balanceSheet"] = symbol.balance_sheet
-            financials["incomeStatement"] = symbol.income_stmt
-            financials["cashFlow"] = symbol.cash_flow
-        else:
-            financials["balanceSheet"] = symbol.quarterly_balance_sheet
-            financials["incomeStatement"] = symbol.quarterly_income_stmt
-            financials["cashFlow"] = symbol.quarterly_cash_flow
-
-        return financials
+    
+    def get_balance_sheet(self):
+        return yf.Ticker(self.ticker).balance_sheet
+    
+    def get_income_statement(self):
+        return yf.Ticker(self.ticker).income_stmt
+    
+    def get_cash_flow(self):
+        return yf.Ticker(self.ticker).cash_flow
     
     def options_flow(self):
         options = {}
@@ -59,7 +52,7 @@ class PortfolioAnalytics:
 
         return df
                              
-    def portfolio_volatility(self):
+    def portfolio_volatility(self, ):
         Q = PortfolioAnalytics(self.start_date).portfolio_data().cov()
         w = np.array(list(self.portfolio.values()))
 
@@ -86,8 +79,7 @@ class PortfolioAnalytics:
 
         date = dt.date(dt.date.today().year,1,1).strftime("%Y-%m-%d")
 
-        tick_compares = TickerData("IWF VTV SPY ^VIX SIZE").get_historical_data(start_date=date)
-        tick_compares = tick_compares.reset_index()
+        tick_compares = TickerData("IWF VTV SPY ^VIX SIZE").get_historical_data(start_date=date).reset_index()
 
         treasury = pd.read_html("https://www.multpl.com/10-year-treasury-rate/table/by-year")
         devi_ratio = round(tick_compares["^VIX"].std()/tick_compares["SPY"].std(),4)
@@ -95,10 +87,10 @@ class PortfolioAnalytics:
         stats["BenchmarkReturn"] = percent_change(tick_compares,"SPY")
         stats["RiskFree"] = round(float(treasury[0].iloc[0,1][:-1])/100,4)
 
-        stats["RiskPremium"] = stats["BenchmarkReturn"] - stats["RiskFree"] 
-        stats["GrowthPremium"] = percent_change(tick_compares,"IWF")-stats["RiskFree"]
-        stats["ValuePremium"] = percent_change(tick_compares,"VTV")-stats["RiskFree"]
-        stats["SizePremium"] = percent_change(tick_compares,"SIZE")-stats["RiskFree"]
+        stats["RiskPremium"] = round(stats["BenchmarkReturn"] - stats["RiskFree"],4) 
+        stats["GrowthPremium"] = round(percent_change(tick_compares,"IWF")-stats["RiskFree"],4)
+        stats["ValuePremium"] = round(percent_change(tick_compares,"VTV")-stats["RiskFree"],4)
+        stats["SizePremium"] = round(percent_change(tick_compares,"SIZE")-stats["RiskFree"],4)
 
         stats["VIX/SPY Corr"] = tick_compares.corr(numeric_only=True).loc["^VIX", "SPY"].round(decimals=4)
         stats["VIX/SPY Beta"] = stats["VIX/SPY Corr"]*devi_ratio
@@ -108,4 +100,4 @@ class PortfolioAnalytics:
         return pd.DataFrame(stats,index=["Stats"]).T
 
 
-print(PortfolioAnalytics("2020-01-01").risk_metrics())
+print(TickerData("MSFT").get_balance_sheet())
