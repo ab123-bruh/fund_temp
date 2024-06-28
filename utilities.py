@@ -174,6 +174,3 @@ class PortfolioAnalytics:
         stats["ExpectedReturn"] = PortfolioAnalytics(date).portfolio_beta()*stats["RiskPremium"]+stats["RiskFree"]
 
         return pd.DataFrame(stats,index=["Stats"]).T
-
-
-print(TickerData("CDLX").dcf_fair_value(5,.15,.03))
