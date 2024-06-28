@@ -22,7 +22,7 @@ class TickerData:
     
     def get_cash_flow(self):
         return yf.Ticker(self.ticker).cash_flow
-    
+
     def options_flow(self):
         options = {}
         flow = yf.Ticker(self.ticker).option_chain()
@@ -31,6 +31,82 @@ class TickerData:
         options["Put"] = flow.puts
 
         return options
+    
+    def dcf_fair_value(self, num_years: int, wacc: float, tgv: float):
+        inital = ["Total Revenue", "EBIT", "Tax Rate For Calcs", "Depreciation And Amortization", 
+                  "Capital Expenditure", "Change In Working Capital", "Cash And Cash Equivalents", 
+                  "Total Debt", "Ordinary Shares Number"]
+        
+        ticker = TickerData(self.ticker)
+        
+        financials = pd.concat([ticker.get_balance_sheet(),
+                                ticker.get_income_statement(),
+                                ticker.get_cash_flow()],axis=0)
+        
+        financials = financials.loc[financials.index.isin(inital)]
+
+        financials.columns = [int(val.strftime("%Y")) for val in financials.columns.tolist()]
+        start = max(financials.columns.tolist())
+
+        financials = financials.dropna(axis=1).T
+
+        for col in inital[:2]+inital[3:]:
+            financials[col] = financials[col]/1000000
+        
+        financials = financials[inital]
+
+        if financials.index.values.tolist()[0] == start:
+            financials = financials.iloc[::-1]
+        
+        cash = financials.loc[financials.index == start,inital[-3]].values.tolist()[0]
+        debt = financials.loc[financials.index == start,inital[-2]].values.tolist()[0]
+        shares = financials.loc[financials.index == start,inital[-1]].values.tolist()[0]
+
+        ebiat = (financials[inital[1]]*(1-financials[inital[2]])).values
+        financials.insert(1,"EBIAT", ebiat)
+        financials = financials.drop(inital[1:3]+inital[6:],axis=1)
+
+        growth_rates = pd.DataFrame()
+
+        growth_rates.index = financials.index.values-start
+
+        growth_rates[inital[0]] = (financials[inital[0]]/financials[inital[0]].shift(1)).values-1
+        growth_rates["EBIAT"] = (financials["EBIAT"]/financials[inital[0]]).values
+
+        for col in inital[3:6]:
+            growth_rates[col] = (financials[col]/financials["EBIAT"]).values
+
+        growth_rates = growth_rates.T
+        financials = financials.T
+
+        for i,k in zip(range(0,num_years,1), range(start,start+num_years,1)):
+            v = [j for j in range(growth_rates.columns.tolist()[i],i+1,1)]
+            growth_rates[i+1] = growth_rates[v].mean(axis=1)
+            financials[k+1] = financials[k] * (1+growth_rates[i+1])
+
+        cols1 = financials.columns.tolist()
+        cols1 = np.array(cols1[cols1.index(start+1):])
+
+        financials = financials[cols1]
+
+        values = financials.T
+
+        unlevered_fcf = values["EBIAT"]+values[inital[3]]-values[inital[4]]-values[inital[5]]
+
+        cols2 = growth_rates.columns.tolist()
+        cols2 = np.array(cols2[cols2.index(1):])
+
+        pv_fcf = unlevered_fcf.values/((1+wacc)**cols2)
+
+        tv = round((unlevered_fcf.values.tolist()[-1]*(1+wacc))/(wacc-tgv),1)
+
+        pv_tv = round(tv/((1+wacc)**cols2.flatten().tolist()[-1]),1)
+
+        enterprise_value = round(pv_tv + pv_fcf.sum(),1)
+
+        fair_value = (enterprise_value+cash-debt)/shares
+
+        return round(fair_value,2)
 
     
 class PortfolioAnalytics:
@@ -100,4 +176,4 @@ class PortfolioAnalytics:
         return pd.DataFrame(stats,index=["Stats"]).T
 
 
-print(TickerData("MSFT").get_balance_sheet())
+print(TickerData("CDLX").dcf_fair_value(5,.15,.03))
