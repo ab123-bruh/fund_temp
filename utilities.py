@@ -33,9 +33,8 @@ class TickerData:
         return options
     
     def dcf_fair_value(self, num_years: int, wacc: float, tgv: float):
-        inital = ["Total Revenue", "EBIT", "Tax Rate For Calcs", "Depreciation And Amortization", 
-                  "Capital Expenditure", "Change In Working Capital", "Cash And Cash Equivalents", 
-                  "Total Debt", "Ordinary Shares Number"]
+        inital = ["Total Revenue", "EBIT", "Tax Provision", "Depreciation And Amortization", "Capital Expenditure", 
+                  "Change In Working Capital", "Cash And Cash Equivalents", "Total Debt", "Ordinary Shares Number"]
         
         ticker = TickerData(self.ticker)
         
@@ -50,7 +49,7 @@ class TickerData:
 
         financials = financials.dropna(axis=1).T
 
-        for col in inital[:2]+inital[3:]:
+        for col in inital:
             financials[col] = financials[col]/1000000
         
         financials = financials[inital]
@@ -62,18 +61,16 @@ class TickerData:
         debt = financials.loc[financials.index == start,inital[-2]].values.tolist()[0]
         shares = financials.loc[financials.index == start,inital[-1]].values.tolist()[0]
 
-        ebiat = (financials[inital[1]]*(1-financials[inital[2]])).values
-        financials.insert(1,"EBIAT", ebiat)
-        financials = financials.drop(inital[1:3]+inital[6:],axis=1)
+        financials = financials.drop(inital[6:],axis=1)
 
         growth_rates = pd.DataFrame()
 
         growth_rates.index = financials.index.values-start
 
         growth_rates[inital[0]] = (financials[inital[0]]/financials[inital[0]].shift(1)).values-1
-        growth_rates["EBIAT"] = (financials["EBIAT"]/financials[inital[0]]).values
+        growth_rates[inital[1]] = (financials[inital[1]]/financials[inital[0]]).values
 
-        for col in inital[3:6]:
+        for col in inital[2:6]:
             growth_rates[col] = (financials[col]/financials["EBIAT"]).values
 
         growth_rates = growth_rates.T
@@ -91,7 +88,7 @@ class TickerData:
 
         values = financials.T
 
-        unlevered_fcf = values["EBIAT"]+values[inital[3]]-values[inital[4]]-values[inital[5]]
+        unlevered_fcf = values[inital[1]]-values[inital[2]]+values[inital[3]]-values[inital[4]]-values[inital[5]]
 
         cols2 = growth_rates.columns.tolist()
         cols2 = np.array(cols2[cols2.index(1):])
