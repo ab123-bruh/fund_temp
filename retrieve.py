@@ -3,28 +3,29 @@ import os
 import requests
 import yfinance as yf
 import numpy as np
+import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
 
 criteria = json.loads(open(os.getcwd() + "\\criteria.json","r").read())
 
-class Criteria:
-    def __init__(self):
-        self.greater = criteria["Portfolio Criteria"]["Greater"]
-        self.less_than = criteria["Portfolio Criteria"]["Less Than"]
+# class Criteria:
+#     def __init__(self):
+#         self.greater = criteria["Portfolio Criteria"]["Greater"]
+#         self.less_than = criteria["Portfolio Criteria"]["Less Than"]
     
-    def get_immediate_criteria(self):
-        return criteria["Immediate Criteria"]
+#     def get_immediate_criteria(self):
+#         return criteria["Immediate Criteria"]
     
-    def get_greater_criteria(self):
-        return self.greater
+#     def get_greater_criteria(self):
+#         return self.greater
 
-    def get_less_criteria(self):
-        return self.less_than
+#     def get_less_criteria(self):
+#         return self.less_than
     
-    def get_metrics(self):
-        metrics = list(self.greater.keys())
-        metrics.extend(list(self.less_than.keys()))
-        return metrics
+#     def get_metrics(self):
+#         metrics = list(self.greater.keys())
+#         metrics.extend(list(self.less_than.keys()))
+#         return metrics
 
 class Basket:
     def __init__(self):
@@ -53,81 +54,38 @@ class Basket:
 class RecommendTicker:
     def __init__(self):
         self.github_branch = "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main"
-        self.exchanges = criteria["Exchanges"]
+        self.exchanges = ["nyse", "nasdaq", "amex"]
         self.file =  "_full_tickers.json"
     
-    def get_all_tickers(self,symbol_only=False):
-        tickers = {}
+    def get_tickers(self,symbol_only=False):
+        tickers = []
 
         for stock_ex in self.exchanges:
             exchange =  "/" + stock_ex + "/" + stock_ex + self.file
             resp = requests.get(self.github_branch + exchange)
-            tickers[stock_ex] = json.loads(resp.text)
+            tickers.append(pd.DataFrame(json.loads(resp.text)))
 
-        if symbol_only is True:
-            symbols = []
-            for stock_ex in self.exchanges:
-                for i in range(len(tickers[stock_ex])):
-                    symbols.append(tickers[stock_ex][i]["symbol"])
-            
-            return symbols
+        tickers = pd.concat(tickers,axis=0)
+
+        tickers["lastsale"] = tickers["lastsale"].str[1:].astype(float).round(decimals=2)
+        tickers["volume"] = tickers["volume"].astype(int)
+
+        # Some of them were null so slapped zero since we are not using them
+        tickers["marketCap"] = tickers["marketCap"].replace('','0.0').astype(float)
+
+        tickers = tickers.loc[(tickers["marketCap"] < 2000000000) & (tickers["lastsale"] > 5) & (tickers["volume"] > 200000) &
+                            (tickers["industry"] != '') & (tickers["sector"] != '')]
         
-        else:
-            return tickers
+        tickers = tickers[["symbol", "name", "lastsale", "ipoyear", "sector"]]
+        
+        tickers = tickers.sort_values(by="symbol").reset_index(drop=True)
+        
+        return tickers
     
     def shortlist_tickers(self):
-        tickers = RecommendTicker().get_all_tickers()
-        new_tickers = []
-
-        crit = list(Criteria().get_immediate_criteria().keys())
-
-        for stock_ex in self.exchanges:
-            data = tickers[stock_ex]
-
-            ticker_data = []
-            metric_data = {metric: [] for metric in crit}
-
-            for tick_val in data:
-                check_1 = tick_val["symbol"] in list(Basket().get_portfolio().keys())
-                check_2 = any(tick_val[checker] == "" for checker in crit)
-
-                if check_1 or check_2:
-                    continue
-                
-                lastsale = float(tick_val[crit[0]][1:])
-                volume = float(tick_val[crit[1]])
-                marketCap = float(tick_val[crit[2]])
-
-                ticker_data.append(tick_val["symbol"])
-                
-                # loop unrolling to save time here
-                metric_data[crit[0]].append(lastsale)
-                metric_data[crit[1]].append(volume)
-                metric_data[crit[2]].append(marketCap)
-                        
-            metric_arrays = {metric: np.array(values) for metric, values in metric_data.items()}
-            
-            check_3 = np.ones(len(ticker_data), dtype=bool)
-            check_4 = np.ones(len(ticker_data), dtype=bool)
-
-            check_3 &= metric_arrays[crit[0]] > criteria["Immediate Criteria"][crit[0]]
-            check_3 &= metric_arrays[crit[1]] > criteria["Immediate Criteria"][crit[1]]
-
-            check_4 &= metric_arrays[crit[2]] < criteria["Immediate Criteria"][crit[2]]
-
-            final_check = check_3 & check_4
-
-            ticker_data = np.array(ticker_data)[final_check].tolist()
-
-            new_tickers.extend(ticker_data)
+        metrics = ['beta', 'profitMargins', 'priceToBook', 'trailingEps', 'forwardEps', 'quickRatio', 'currentRatio',
+                    'debtToEquity', 'returnOnEquity', 'enterpriseToRevenue', 'revenueGrowth']
         
-        new_tickers = [tick.replace("/",".") for tick in new_tickers if "^" not in tick]
-
-        return new_tickers
-
-    def recommend_tickers(self):
-        metrics = Criteria().get_metrics()
-
         def get_info(ticker: str):
             value = {}
             try:
@@ -138,15 +96,13 @@ class RecommendTicker:
             
             return value
 
-        tickers = RecommendTicker().shortlist_tickers()
+        tickers = RecommendTicker().get_tickers()
 
         with ThreadPoolExecutor() as executor:
-            ticker_data = list(executor.map(get_info, tickers))
-        
-        ticker_data = [e for e in ticker_data if len(list(e[list(e.keys())[0]].keys())) == len(metrics)]
+            ticker_data = list(executor.map(get_info, tickers["symbol"].tolist()))
         
         metric_values = {metric: [] for metric in metrics}
-
+        
         new_tickers = []
 
         for ticker in ticker_data:
@@ -158,20 +114,9 @@ class RecommendTicker:
         
         metric_arrays = {metric: np.array(values) for metric, values in metric_values.items()}
 
-        # Create boolean arrays for the conditions
-        check_3 = np.ones(len(new_tickers), dtype=bool)
-        check_4 = np.ones(len(new_tickers), dtype=bool)
+        tickers = pd.concat([tickers,pd.DataFrame(metric_arrays)],axis=1).dropna()
 
-        for metric, x in Criteria().get_greater_criteria().items():
-            check_3 &= metric_arrays[metric] > x
+        return tickers
 
-        for metric, x in Criteria().get_less_criteria().items():
-            check_4 &= metric_arrays[metric] < x
-            
-        # Combine the conditions
-        final_check = check_3 & check_4
-
-        # Get the final list of tickers that meet the conditions
-        new_tickers = np.array(new_tickers)[final_check].tolist()
-        
-        return new_tickers
+    def recommend_tickers(self):
+        pass

@@ -77,8 +77,8 @@ class TickerData:
         financials = financials.T
 
         for i,k in zip(range(0,num_years,1), range(start,start+num_years,1)):
-            v = [j for j in range(growth_rates.columns.tolist()[i],i+1,1)]
-            growth_rates[i+1] = growth_rates[v].mean(axis=1)
+            years = [j for j in range(growth_rates.columns.tolist()[i],i+1,1)]
+            growth_rates[i+1] = growth_rates[years].mean(axis=1)
             financials[k+1] = financials[k] * (1+growth_rates[i+1])
 
         cols1 = financials.columns.tolist()

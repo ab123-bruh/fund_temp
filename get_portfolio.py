@@ -1,8 +1,6 @@
 import pandas as pd
 import yfinance as yf
+import requests
 
-def moving_average():
-    pass
-
-def algo2():
+def get_portfolio():
     pass
