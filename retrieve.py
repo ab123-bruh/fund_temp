@@ -6,58 +6,38 @@ import numpy as np
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
 
-criteria = json.loads(open(os.getcwd() + "\\criteria.json","r").read())
-
-# class Criteria:
+# class Basket:
 #     def __init__(self):
-#         self.greater = criteria["Portfolio Criteria"]["Greater"]
-#         self.less_than = criteria["Portfolio Criteria"]["Less Than"]
-    
-#     def get_immediate_criteria(self):
-#         return criteria["Immediate Criteria"]
-    
-#     def get_greater_criteria(self):
-#         return self.greater
-
-#     def get_less_criteria(self):
-#         return self.less_than
-    
-#     def get_metrics(self):
-#         metrics = list(self.greater.keys())
-#         metrics.extend(list(self.less_than.keys()))
-#         return metrics
-
-class Basket:
-    def __init__(self):
-        self.portfolio = criteria["Portfolio Weights"]
+#         self.portfolio = ""
         
-    def get_portfolio(self):
-        return self.portfolio
+#     def get_portfolio(self):
+#         return self.portfolio
     
-    def update_portfolio(self, key: str, value: float):
-        values = list(self.portfolio.values())
-        if value <= 0:
-            raise ValueError("To add to portfolio, the ticker weight must be greater than 0")
-        elif sum(values) + value > 1:
-            raise ValueError("Max for current portfolio is " + str(1-sum(values)) + " based on current portfolio.")            
-        elif key in list(self.portfolio.keys()):
-            self.portfolio.update({key: value})
-        else:
-            self.portfolio[key] = value
+#     def update_portfolio(self, key: str, value: float):
+#         values = list(self.portfolio.values())
+#         if value <= 0:
+#             raise ValueError("To add to portfolio, the ticker weight must be greater than 0")
+#         elif sum(values) + value > 1:
+#             raise ValueError("Max for current portfolio is " + str(1-sum(values)) + " based on current portfolio.")            
+#         elif key in list(self.portfolio.keys()):
+#             self.portfolio.update({key: value})
+#         else:
+#             self.portfolio[key] = value
             
-    def remove_ticker(self, key: str):
-        try:
-            del self.portfolio[key]
-        except KeyError:
-            print("This ticker was not in the portfolio.")
-    
+#     def remove_ticker(self, key: str):
+#         try:
+#             del self.portfolio[key]
+#         except KeyError:
+#             print("This ticker was not in the portfolio.")
+
+
 class RecommendTicker:
     def __init__(self):
         self.github_branch = "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main"
         self.exchanges = ["nyse", "nasdaq", "amex"]
         self.file =  "_full_tickers.json"
     
-    def get_tickers(self,symbol_only=False):
+    def get_tickers(self):
         tickers = []
 
         for stock_ex in self.exchanges:
@@ -117,6 +97,3 @@ class RecommendTicker:
         tickers = pd.concat([tickers,pd.DataFrame(metric_arrays)],axis=1).dropna()
 
         return tickers
-
-    def recommend_tickers(self):
-        pass
