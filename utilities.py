@@ -57,21 +57,21 @@ class TickerData:
         if financials.index.values.tolist()[0] == start:
             financials = financials.iloc[::-1]
         
-        cash = financials.loc[financials.index == start,inital[-3]].values.tolist()[0]
-        debt = financials.loc[financials.index == start,inital[-2]].values.tolist()[0]
-        shares = financials.loc[financials.index == start,inital[-1]].values.tolist()[0]
+        cash = financials.loc[financials.index == start,"Cash And Cash Equivalents"].values.tolist()[0]
+        debt = financials.loc[financials.index == start,"Total Debt"].values.tolist()[0]
+        shares = financials.loc[financials.index == start,"Ordinary Shares Number"].values.tolist()[0]
 
-        financials = financials.drop(inital[6:],axis=1)
+        financials = financials.drop(["Cash And Cash Equivalents", "Total Debt", "Ordinary Shares Number"],axis=1)
 
         growth_rates = pd.DataFrame()
 
         growth_rates.index = financials.index.values-start
 
-        growth_rates[inital[0]] = (financials[inital[0]]/financials[inital[0]].shift(1)).values-1
-        growth_rates[inital[1]] = (financials[inital[1]]/financials[inital[0]]).values
+        growth_rates["Total Revenue"] = (financials["Total Revenue"]/financials["Total Revenue"].shift(1)).values-1
+        growth_rates["EBIT"] = (financials["EBIT"]/financials["Total Revenue"]).values
 
         for col in inital[2:6]:
-            growth_rates[col] = (financials[col]/financials["EBIAT"]).values
+            growth_rates[col] = (financials[col]/financials["EBIT"]).values
 
         growth_rates = growth_rates.T
         financials = financials.T
@@ -86,9 +86,9 @@ class TickerData:
 
         financials = financials[cols1]
 
-        values = financials.T
+        values = financials.T                  
 
-        unlevered_fcf = values[inital[1]]-values[inital[2]]+values[inital[3]]-values[inital[4]]-values[inital[5]]
+        unlevered_fcf = values["EBIT"]-values["Tax Provision"]+values["Depreciation And Amortization"]-values["Capital Expenditure"]-values["Change In Working Capital"]
 
         cols2 = growth_rates.columns.tolist()
         cols2 = np.array(cols2[cols2.index(1):])
