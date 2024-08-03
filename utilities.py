@@ -94,7 +94,7 @@ class TickerData:
         financials = financials.loc[financials.index.isin(inital)]
         financials = financials[~financials.index.duplicated(keep="first")]
 
-        financials.columns = [int(val[4:]) for val in f.columns.tolist()]
+        financials.columns = [int(val[4:]) for val in financials.columns.tolist()]
         start = max(financials.columns.tolist())
 
         financials = financials.dropna(axis=1).T 
@@ -150,7 +150,7 @@ class TickerData:
     
 class PortfolioAnalytics:
     def __init__(self, start_date: str):
-        self.portfolio = Basket().get_portfolio()
+        # self.portfolio = Basket().get_portfolio()
         self.start_date = start_date
     
     def portfolio_data(self):
