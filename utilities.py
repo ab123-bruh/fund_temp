@@ -1,12 +1,13 @@
 import pandas as pd
 import yfinance as yf
 import numpy as np
-from retrieve import Basket 
+import requests
 import datetime as dt
 
 class TickerData:
     def __init__(self, ticker: str):
         self.ticker = ticker
+        self.rapid_api_key = "" # can't enter the API key(s) until we make repo private 
             
     def get_historical_data(self,start_date: str):
         return yf.download(self.ticker,start=start_date)["Adj Close"]
@@ -14,14 +15,60 @@ class TickerData:
     def ticker_volatility(self,start_date: str):
         return self.get_historical_data(start_date).std()
     
-    def get_balance_sheet(self):
-        return yf.Ticker(self.ticker).balance_sheet
-    
-    def get_income_statement(self):
-        return yf.Ticker(self.ticker).income_stmt
-    
-    def get_cash_flow(self):
-        return yf.Ticker(self.ticker).cash_flow
+    def get_financials(self,statement: str):
+        querystring = {
+            "symbol": self.ticker.lower(),
+            "target_currency": "USD",
+            "period_type": "annual",
+            "statement_type": statement
+        }
+
+        headers = {
+            "x-rapidapi-key": self.rapid_api_key,
+            "x-rapidapi-host": "seeking-alpha.p.rapidapi.com"
+        }
+
+        url = "https://" + headers["x-rapidapi-host"] + "/symbols/get-financials"
+
+        values = requests.get(url, headers=headers, params=querystring).json()
+
+        values_dataset = pd.DataFrame()
+
+        for p1 in range(len(values)):
+            part_data = values[p1]["rows"]
+
+            for p2 in range(len(part_data)):
+                sub_data = pd.DataFrame(part_data[p2]["cells"])
+                sub_data["account"] = part_data[p2]["value"]
+
+                sub_data = sub_data.loc[(sub_data["class"] != "archive-lock") & (sub_data["value"] != False)]
+                
+                sub_data["value"] = sub_data["value"].str.replace("[$,)]","",regex=True)
+                sub_data["value"] = sub_data["value"].str.replace("(","-")
+
+                if (sub_data["value"].str[-1] == "%").all():
+                    sub_data["value"] = sub_data["value"].str.replace("%","")
+                    sub_data["value"] = sub_data["value"].replace("-",np.nan)
+                    sub_data["value"] = sub_data["value"].astype(float)/100
+                else:
+                    sub_data["value"] = sub_data["value"].replace("-",np.nan)
+                    sub_data["value"] = sub_data["value"].astype(float)
+                
+                sub_data = sub_data.rename(columns={"name": "date"})
+                
+                values_dataset = pd.concat([values_dataset,sub_data[["account","date","value"]]])
+        
+        values_dataset = values_dataset.reset_index(drop=True)
+
+        financials_data = pd.DataFrame(index=values_dataset["account"].drop_duplicates().tolist(),
+                                       columns=values_dataset["date"].drop_duplicates().tolist()) 
+        
+        for date in financials_data.columns.tolist():
+            financials_data[date] = values_dataset.loc[values_dataset["date"] == date, "value"].values
+            financials_data[date] = financials_data[date].fillna(0)
+        
+        return financials_data
+
 
     def options_flow(self):
         options = {}
@@ -33,14 +80,15 @@ class TickerData:
         return options
     
     def dcf_fair_value(self, num_years: int, wacc: float, tgv: float):
-        inital = ["Total Revenue", "EBIT", "Tax Provision", "Depreciation And Amortization", "Capital Expenditure", 
-                  "Change In Working Capital", "Cash And Cash Equivalents", "Total Debt", "Ordinary Shares Number"]
+        inital = ["Total Revenues", "EBIT", "Income Tax Expense", "Depreciation & Amortization", 
+                  "Capital Expenditure", "Change In Net Working Capital", "Cash And Equivalents", 
+                  "Current Portion of LT Debt", "Total Common Shares Outstanding"]
         
         ticker = TickerData(self.ticker)
         
-        financials = pd.concat([ticker.get_balance_sheet(),
-                                ticker.get_income_statement(),
-                                ticker.get_cash_flow()],axis=0)
+        financials = pd.concat([ticker.get_financials("income-statement"),
+                                ticker.get_financials("balance-sheet"),
+                                ticker.get_financials("cash-flow-statement")],axis=0)
         
         financials = financials.loc[financials.index.isin(inital)]
 
