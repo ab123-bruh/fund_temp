@@ -38,16 +38,6 @@ class RecommendTicker:
         self.file =  "_full_tickers.json"
     
     def get_tickers(self):
-        def get_info(ticker: str):
-            value = {}
-            try:
-                value[ticker] = dict(filter(lambda item: item[0] in metrics, 
-                                            yf.Ticker(ticker).info.items()))
-            except:
-                value[ticker] = {}
-            
-            return value
-        
         tickers = []
 
         for stock_ex in self.exchanges:
@@ -62,12 +52,31 @@ class RecommendTicker:
 
         # Some of them were null so slapped zero since we are not using them
         tickers["marketCap"] = tickers["marketCap"].replace('','0.0').astype(float)
-        
-        tickers = tickers[["symbol", "name", "lastsale", "ipoyear", "sector"]]
+
         tickers = tickers.sort_values(by="symbol").reset_index(drop=True)
 
+        return tickers
+
+    def shortlist_tickers(self):
         metrics = ['quoteType','beta', 'profitMargins', 'priceToBook', 'trailingEps', 'forwardEps', 'quickRatio', 
-            'currentRatio', 'debtToEquity', 'returnOnEquity', 'enterpriseToRevenue', 'revenueGrowth']
+                   'currentRatio', 'debtToEquity', 'returnOnEquity', 'enterpriseToRevenue', 'revenueGrowth']
+        
+        def get_info(ticker: str):
+            value = {}
+            try:
+                value[ticker] = dict(filter(lambda item: item[0] in metrics, 
+                                            yf.Ticker(ticker).info.items()))
+            except:
+                value[ticker] = {}
+            
+            return value
+
+        tickers = RecommendTicker().get_tickers()
+        tickers = tickers[["symbol", "name", "lastsale", "ipoyear", "sector"]]
+
+        tickers = tickers.loc[(tickers["marketCap"] < 2000000000) & (tickers["lastsale"] > 5) 
+                              & (tickers["volume"] > 200000) & (tickers["industry"] != '') 
+                              & (tickers["sector"] != '')]
         
         with ThreadPoolExecutor() as executor:
             ticker_data = list(executor.map(get_info, tickers["symbol"].tolist()))
@@ -87,13 +96,4 @@ class RecommendTicker:
 
         tickers = pd.concat([tickers,pd.DataFrame(metric_arrays)],axis=1).dropna()
         
-        return tickers
-    
-    def shortlist_tickers(self):
-        tickers = RecommendTicker().get_tickers()
-
-        tickers = tickers.loc[(tickers["marketCap"] < 2000000000) & (tickers["lastsale"] > 5) 
-                              & (tickers["volume"] > 200000) & (tickers["industry"] != '') 
-                              & (tickers["sector"] != '')]
-
         return tickers
