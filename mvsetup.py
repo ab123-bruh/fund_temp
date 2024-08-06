@@ -35,13 +35,12 @@ class RecommendTicker:
     def __init__(self):
         self.github_branch = "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main"
         self.exchanges = ["nyse", "nasdaq", "amex"]
-        self.file =  "_full_tickers.json"
     
     def get_tickers(self):
         tickers = []
 
         for stock_ex in self.exchanges:
-            exchange =  "/" + stock_ex + "/" + stock_ex + self.file
+            exchange =  "/" + stock_ex + "/" + stock_ex +  "_full_tickers.json"
             resp = requests.get(self.github_branch + exchange)
             tickers.append(pd.DataFrame(json.loads(resp.text)))
 
@@ -52,7 +51,6 @@ class RecommendTicker:
 
         # Some of them were null so slapped zero since we are not using them
         tickers["marketCap"] = tickers["marketCap"].replace('','0.0').astype(float)
-
         tickers = tickers.sort_values(by="symbol").reset_index(drop=True)
 
         return tickers
