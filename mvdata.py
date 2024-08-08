@@ -180,3 +180,22 @@ class PortfolioAnalytics:
         stats["ExpectedReturn"] = PortfolioAnalytics(date).portfolio_beta()*stats["RiskPremium"]+stats["RiskFree"]
 
         return pd.DataFrame(stats,index=["Stats"]).T
+
+class AlgoStats:
+    def __init__(self):
+        pass
+
+    def backtest_algo(self):
+        pass
+
+    def results(self):
+        pass
+
+    def plot_algo(self):
+        pass
+
+    def performance(self):
+        pass 
+
+    def walk_forward_optimization(self):
+        pass

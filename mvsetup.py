@@ -1,9 +1,8 @@
-import json
-import os
-import requests
+import pandas as pd
 import yfinance as yf
 import numpy as np
-import pandas as pd
+import requests
+import json
 from concurrent.futures import ThreadPoolExecutor
 
 class Basket:
@@ -70,8 +69,8 @@ class RecommendTicker:
             return value
 
         tickers = RecommendTicker().get_tickers()
-        tickers = tickers[["symbol", "name", "lastsale", "ipoyear", "sector"]]
 
+        tickers = tickers.drop(["url"],axis=1)
         tickers = tickers.loc[(tickers["marketCap"] < 2000000000) & (tickers["lastsale"] > 5) 
                               & (tickers["volume"] > 200000) & (tickers["industry"] != '') 
                               & (tickers["sector"] != '')]
