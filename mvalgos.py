@@ -4,6 +4,7 @@ import numpy as np
 import requests
 from mvdata import TickerData
 
+# Need to change this to Kalman Filter after some more reading and use bt to show performance better or worse
 def tail_action(tickers: list, start_date: str):
     tick_str = ""
 
