@@ -134,9 +134,14 @@ def monte_carlo(tick: str, num_days: int, point_per_day: float, num_simulations:
         H = np.random.uniform(low=lower_bound,high=upper_bound)
         fgn = FractionalGaussianNoise(hurst=H,t=num_days)
         sim = fgn._sample_fractional_gaussian_noise(num_days*point_per_day)
+        
         sim = sim.cumsum()
         sim = np.insert(sim, [0], 0)
         simulation[:, i] += sim
+
+        ruin = np.where(sim < start*-1)[0].tolist()
+        if len(ruin) >= 1:
+            simulation[ruin[0]:,i] = start*-1
 
     simulation = pd.DataFrame(simulation) + start
 
