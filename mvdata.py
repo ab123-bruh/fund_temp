@@ -78,6 +78,8 @@ class TickerData:
         
         return financials_data
     
+    # This is essentially meant to be a dataframe for backtesting actions
+    # Formatting for this will change dependent on what we use to backtest (we may need to create our own)
     def action_tickers(self,buy_indicator: pd.Series,sell_indicator: pd.Series):
         tick_buy = pd.DataFrame(buy_indicator[self.ticker])
         tick_buy["BuySignal"] = "Buy"

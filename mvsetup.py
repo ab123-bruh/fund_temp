@@ -7,10 +7,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 class Basket:
     def __init__(self):
-        self.portfolio = ""
+        pass
         
     def get_portfolio(self):
-        return self.portfolio
+        # Requires proper connectivity to the Interactive Brokers site first
+        pass
     
     def update_portfolio(self, key: str, value: float):
         values = list(self.portfolio.values())

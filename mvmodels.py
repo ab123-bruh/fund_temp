@@ -2,7 +2,8 @@ import pandas as pd
 import yfinance as yf
 import numpy as np
 import requests
-from mvdata import TickerData
+from mvdata import TickerData  
+from stochastic.processes.noise import FractionalGaussianNoise
 
 def dcf_fair_value(tick: str, num_years: int, wacc: float, tgv: float):
     inital = ["Total Revenues", "EBIT", "Income Tax Expense", "Depreciation & Amortization", 
@@ -75,3 +76,62 @@ def dcf_fair_value(tick: str, num_years: int, wacc: float, tgv: float):
 
 def public_comps(tick: str):
     pass
+
+def residual_income(tick: str):
+    pass
+
+def hurst_exponent(df: pd.DataFrame, hurst_window: int):
+    df["Return"] = np.log(df['Adj Close'] / df['Adj Close'].shift(1)).dropna()
+
+    hurst_exponents = []
+
+    for start in range(len(df) - hurst_window):
+        end = start + hurst_window
+        window_data = df['Return'].iloc[start:end]
+        
+        N = len(window_data)
+        mean_adj_ts = window_data - np.mean(window_data)
+        cumulative_dev = np.cumsum(mean_adj_ts)
+        R = np.max(cumulative_dev) - np.min(cumulative_dev)
+        S = np.std(window_data)
+        if S == 0 or R == 0:  # Avoid division by zero
+            hurst_exponents.append(np.nan)
+        else:
+            hurst_exponents.append(np.log((R / S)) / np.log(N))
+    
+    hurst = pd.DataFrame(hurst_exponents,columns=["hurst_exponent"])
+
+    return hurst
+
+def monte_carlo(tick: str, num_days: int, point_per_day: float, num_simulations: int):
+    df = TickerData(tick).get_historical_data(start_date="2020-01-01")
+
+    start = df["Adj Close"].values.tolist()[-1]
+
+     # Trading days
+    simulation = np.zeros((num_days*point_per_day+1, num_simulations))
+
+    window = 30
+    hurst = hurst_exponent(df,window).values.mean()
+
+    m = np.log2(len(df)-window)
+
+    lower_bound = hurst - np.e ** (-7.33 * np.log(np.log(m)) + 4.21)
+    upper_bound = hurst + np.e ** (-7.20 * np.log(np.log(m)) + 4.04) 
+
+    for i in range(num_simulations):
+        H = np.random.uniform(low=lower_bound,high=upper_bound)
+        fgn = FractionalGaussianNoise(hurst=H,t=num_days)
+        sim = fgn._sample_fractional_gaussian_noise(num_days*point_per_day)
+        sim = sim.cumsum()
+        sim = np.insert(sim, [0], 0)
+        simulation[:, i] += sim
+
+    simulation = pd.DataFrame(simulation) + start
+
+    return simulation
+
+
+
+
+

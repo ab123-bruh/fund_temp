@@ -4,7 +4,24 @@ import numpy as np
 import requests
 from mvdata import TickerData
 
-# Need to change this to Kalman Filter after some more reading and use bt to show performance better or worse
+# Ideally these algos are borrowing from methods in engineering applications so methods from thermodynamics
+# or other disciplines to determine actions in a time series is what users look for
+
+class TrendFollowing:
+    def __init__(self):
+        pass
+
+    def method1(self):
+        pass
+
+class MeanReversion:
+    def __init__(self):
+        pass
+
+    def method1(self):
+        pass
+
+# Need to add the Kalman Filter method after some more reading and use bt to show performance better or worse
 def tail_action(tickers: list, start_date: str):
     tick_str = ""
 
