@@ -92,13 +92,13 @@ def residual_income(tick: str):
     pass
 
 def hurst_exponent(df: pd.DataFrame, hurst_window: int):
-    ret = np.log(df.values / df.values.shift(1)).dropna()
+    ret = pd.Series(np.log(df.values / df.values.shift(1)).dropna())
 
     hurst_exponents = []
 
     for start in range(len(ret) - hurst_window):
         end = start + hurst_window
-        window_data = df['Return'].iloc[start:end]
+        window_data = ret.iloc[start:end]
         
         N = len(window_data)
         mean_adj_ts = window_data - np.mean(window_data)
