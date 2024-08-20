@@ -117,7 +117,7 @@ def hurst_exponent(df: pd.DataFrame, hurst_window: int):
 def monte_carlo(tick: str, num_days: int, point_per_day: float, num_simulations: int):
     df = TickerData(tick).get_historical_data(start_date="2020-01-01")
 
-    start = df["Adj Close"].values.tolist()[-1]
+    start = df.values.tolist()[-1]
 
      # Trading days
     simulation = np.zeros((num_days*point_per_day+1, num_simulations))
@@ -134,7 +134,7 @@ def monte_carlo(tick: str, num_days: int, point_per_day: float, num_simulations:
         H = np.random.uniform(low=lower_bound,high=upper_bound)
         fgn = FractionalGaussianNoise(hurst=H,t=num_days)
         sim = fgn._sample_fractional_gaussian_noise(num_days*point_per_day)
-        
+
         sim = sim.cumsum()
         sim = np.insert(sim, [0], 0)
         simulation[:, i] += sim

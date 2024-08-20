@@ -12,9 +12,6 @@ class TickerData:
     def get_historical_data(self,start_date: str):
         return yf.download(self.ticker,start=start_date)["Adj Close"]
     
-    def ticker_volatility(self,start_date: str):
-        return self.get_historical_data(start_date).std()
-    
     def options_flow(self):
         options = {}
         flow = yf.Ticker(self.ticker).option_chain()
