@@ -64,15 +64,26 @@ def dcf_fair_value(tick: str, num_years: int, wacc: float, tgv: float):
     cols2 = growth_rates.columns.tolist()
     cols2 = np.array(cols2[cols2.index(1):])
 
-    pv_fcf = unlevered_fcf.values/((1+wacc)**cols2)
+    tgvs = [tgv+(i*.005) for i in range(-2,10,1)]
+    waccs = [wacc+(i*.004) for i in range(-2,5,1)]
 
-    tv = round((unlevered_fcf.values.tolist()[-1]*(1+wacc))/(wacc-tgv),1)
-    pv_tv = round(tv/((1+wacc)**cols2.flatten().tolist()[-1]),1)
+    fair_values = np.zeros((len(tgvs),len(waccs)))
 
-    enterprise_value = round(pv_tv + pv_fcf.sum(),1)
-    fair_value = (enterprise_value+cash-debt)/shares
+    for i in range(len(tgvs)):
+        for j in range(len(waccs)):
+            pv_fcf = unlevered_fcf.values/((1+waccs[j])**cols2)
 
-    return round(fair_value,2)
+            tv = round((unlevered_fcf.values.tolist()[-1]*(1+waccs[j]))/(waccs[j]-tgvs[i]),1)
+            pv_tv = round(tv/((1+waccs[j])**cols2.flatten().tolist()[-1]),1)
+
+            enterprise_value = round(pv_tv + pv_fcf.sum(),1)
+            fair_value = (enterprise_value+cash-debt)/shares
+
+            fair_values[i,j] += round(fair_value,2)
+    
+    fair_values = pd.DataFrame(fair_values,index=tgvs,columns=waccs)
+
+    return fair_values
 
 def public_comps(tick: str):
     pass
