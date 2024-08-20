@@ -7,7 +7,7 @@ import datetime as dt
 class TickerData:
     def __init__(self, ticker: str):
         self.ticker = ticker
-        self.rapid_api_key = "" # can't enter the API key(s) until we make repo private 
+        self.rapid_api_key = "81635f7492mshdfd20c9b6cdfd95p18e57djsnca3e7b73408f" # can't enter the API key(s) until we make repo private 
             
     def get_historical_data(self,start_date: str):
         return yf.download(self.ticker,start=start_date)["Adj Close"]
