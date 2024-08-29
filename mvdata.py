@@ -7,7 +7,10 @@ import datetime as dt
 class TickerData:
     def __init__(self, ticker: str):
         self.ticker = ticker
-        self.rapid_api_key = "" # can't enter the API key(s) until we make repo private 
+        self.rapid_api_key = "81635f7492mshdfd20c9b6cdfd95p18e57djsnca3e7b73408f"
+
+    def get_intraday_data(self):
+        pass
             
     def get_historical_data(self):
         start_date = str(dt.datetime.today().year - 4) + "-01-01"
@@ -77,44 +80,10 @@ class TickerData:
         
         return financials_data
 
-class PortfolioAnalytics:
+class MacroData:
     def __init__(self):
-        # self.portfolio = Basket().get_portfolio()
         pass
-    
-    def portfolio_data(self):
-        tick = ""
 
-        for ticker in list(self.portfolio.keys()):
-            tick += (ticker + " ")
-
-        return TickerData(tick).get_historical_data()
-
-    def correlation_matrix(self):
-        df = self.portfolio_data().corr()
-        df = df.where(np.triu(np.ones(df.shape)).astype(np.bool_))
-
-        return df
-                             
-    def portfolio_volatility(self):
-        Q = PortfolioAnalytics(self.start_date).portfolio_data().cov()
-        w = np.array(list(self.portfolio.values()))
-
-        var = np.matmul(np.matmul(w.T,Q),w)
-
-        return np.sqrt(var)
-    
-    def portfolio_beta(self):
-        beta = 0
-
-        for tick,weight in self.portfolio.items():
-            try:
-                beta += (weight*yf.Ticker(tick).info["beta"])
-            except:
-                continue
-        
-        return beta
-    
     def risk_metrics(self):
         def percent_change(df: pd.DataFrame, tick: str):
             return ((df[tick].iloc[len(df)-1]/df[tick].iloc[0])-1).round(decimals=4)
@@ -137,9 +106,18 @@ class PortfolioAnalytics:
         stats["VIX/SPY Corr"] = tick_compares.corr(numeric_only=True).loc["^VIX", "SPY"].round(decimals=4)
         stats["VIX/SPY Beta"] = stats["VIX/SPY Corr"]*devi_ratio
 
-        stats["ExpectedReturn"] = PortfolioAnalytics(date).portfolio_beta()*stats["RiskPremium"]+stats["RiskFree"]
+        return stats
+    
+    # have all macro econ data of interest up to max number of points
+    def fred_data(self):
+        pass
 
-        return pd.DataFrame(stats,index=["Stats"]).T
+    def interest_rates(self):
+        pass
+
+class PortfolioData:
+    def __init__(self):
+        pass
 
 class AlgoStats:
     def __init__(self, ticker: str):

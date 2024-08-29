@@ -2,10 +2,42 @@ import pandas as pd
 import yfinance as yf
 import numpy as np
 import requests
-from mvdata import TickerData  
+from mvdata import TickerData
+from mvdata import MacroData  
 from stochastic.processes.noise import FractionalGaussianNoise
 
-def dcf_fair_value(tick: str, num_years: int, wacc: float, tgv: float):
+# Make sure you have the three financial statements before inputting the data to calculate
+def weighted_cost(tick: str, fin_state: pd.DataFrame):    
+    stats = MacroData().risk_metrics()
+
+    cols = ["Effective Tax Rate", "Interest Expense", "Total Debt"]
+
+    fin_state = fin_state.loc[fin_state.index.isin(cols)]
+    fin_state.columns = [int(val[4:]) for val in fin_state.columns.tolist()]
+    present = max(fin_state.columns.tolist())
+
+    fin_state = fin_state.dropna(axis=1).T 
+    fin_state = fin_state[cols]
+    fin_state = fin_state.loc[fin_state.index == present]
+
+    metrics = {col: yf.Ticker(tick).info[col] for col in ["beta", "marketCap", "enterpriseValue"]}
+
+    cost_of_equity = stats["RiskFree"] + (metrics["beta"]*stats["RiskPremium"])
+    waec = (metrics["marketCap"] * cost_of_equity)/metrics["enterpriseValue"]
+    
+    cost_of_debt = (fin_state["Interest Expense"] / fin_state["Total Debt"]) * (1 - fin_state["Effective Tax Rate"])
+    wadc = ((metrics["enterpriseValue"]-metrics["marketCap"]) * cost_of_debt) / metrics["enterpriseValue"]
+
+    final_values = {
+        "WAEC": waec,
+        "WADC": wadc,
+        "WACC": waec + wadc
+    }
+
+    return final_values
+
+# Possibly put the tgv as the CPI change YoY as that measures inflation
+def dcf_fair_value(tick: str, num_years: int, tgv: float):
     inital = ["Total Revenues", "EBIT", "Income Tax Expense", "Depreciation & Amortization", 
               "Capital Expenditure", "Change In Net Working Capital", "Cash And Equivalents", 
               "Current Portion of LT Debt", "Total Common Shares Outstanding"]
@@ -17,6 +49,8 @@ def dcf_fair_value(tick: str, num_years: int, wacc: float, tgv: float):
                             ticker.get_financials("cash-flow-statement")],axis=0)
     
     financials = financials.drop(["TTM", "Last Report"],axis=1)
+
+    wacc = weighted_cost(tick,financials)
     
     financials = financials.loc[financials.index.isin(inital)]
     financials = financials[~financials.index.duplicated(keep="first")]
@@ -65,7 +99,7 @@ def dcf_fair_value(tick: str, num_years: int, wacc: float, tgv: float):
     cols2 = np.array(cols2[cols2.index(1):])
 
     tgvs = [tgv+(i*.005) for i in range(-2,10,1)]
-    waccs = [wacc+(i*.004) for i in range(-2,5,1)]
+    waccs = [wacc["WACC"]+(i*.004) for i in range(-2,5,1)]
 
     fair_values = np.zeros((len(tgvs),len(waccs)))
 
@@ -92,7 +126,7 @@ def residual_income(tick: str):
     pass
 
 def hurst_exponent(df: pd.DataFrame, hurst_window: int):
-    ret = pd.Series(np.log(df.values / df.values.shift(1)).dropna())
+    ret = pd.Series(np.log(df.values / df.shift(1).values).dropna())
 
     hurst_exponents = []
 
@@ -100,7 +134,6 @@ def hurst_exponent(df: pd.DataFrame, hurst_window: int):
         end = start + hurst_window
         window_data = ret.iloc[start:end]
         
-        N = len(window_data)
         mean_adj_ts = window_data - np.mean(window_data)
         cumulative_dev = np.cumsum(mean_adj_ts)
         R = np.max(cumulative_dev) - np.min(cumulative_dev)
@@ -108,14 +141,12 @@ def hurst_exponent(df: pd.DataFrame, hurst_window: int):
         if S == 0 or R == 0:  # Avoid division by zero
             hurst_exponents.append(np.nan)
         else:
-            hurst_exponents.append(np.log((R / S)) / np.log(N))
+            hurst_exponents.append(np.log((R / S)) / np.log(len(window_data)))
     
-    hurst = pd.DataFrame(hurst_exponents,columns=["hurst_exponent"])
-
-    return hurst
+    return sum(hurst_exponents) / len(hurst_exponents)
 
 def monte_carlo(tick: str, num_days: int, point_per_day: float, num_simulations: int):
-    df = TickerData(tick).get_historical_data(start_date="2020-01-01")
+    df = TickerData(tick).get_historical_data()
 
     start = df.values.tolist()[-1]
 
@@ -123,7 +154,7 @@ def monte_carlo(tick: str, num_days: int, point_per_day: float, num_simulations:
     simulation = np.zeros((num_days*point_per_day+1, num_simulations))
 
     window = 30
-    hurst = hurst_exponent(df,window).values.mean()
+    hurst = hurst_exponent(df,window)
 
     m = np.log2(len(df)-window)
 
@@ -146,8 +177,3 @@ def monte_carlo(tick: str, num_days: int, point_per_day: float, num_simulations:
     simulation = pd.DataFrame(simulation) + start
 
     return simulation
-
-
-
-
-
