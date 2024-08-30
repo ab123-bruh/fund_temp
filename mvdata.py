@@ -7,15 +7,18 @@ import datetime as dt
 class TickerData:
     def __init__(self, ticker: str):
         self.ticker = ticker
-        self.rapid_api_key = "81635f7492mshdfd20c9b6cdfd95p18e57djsnca3e7b73408f"
+        self.rapid_api_key = ""
 
     def get_intraday_data(self):
         pass
             
     def get_historical_data(self):
-        start_date = str(dt.datetime.today().year - 4) + "-01-01"
+        today = dt.datetime.today()
+        start_date = str(today.year - 4) + "-" + str(today.month) + "-" + str(today.day)
 
-        return yf.download(self.ticker,start=start_date)["Adj Close"]
+        df = yf.download(self.ticker,start=start_date)
+
+        return df["Adj Close"]
     
     def options_flow(self):
         options = {}
@@ -91,6 +94,8 @@ class MacroData:
         stats = {}
 
         tick_compares = TickerData("IWF VTV SPY ^VIX SIZE").get_historical_data().reset_index()
+
+        tick_compares = tick_compares.loc[tick_compares["Date"] >= str(dt.datetime.today().year) + "-01-01"]
 
         treasury = pd.read_html("https://www.multpl.com/10-year-treasury-rate/table/by-year")
         devi_ratio = round(tick_compares["^VIX"].std()/tick_compares["SPY"].std(),4)

@@ -2,13 +2,12 @@ import pandas as pd
 import yfinance as yf
 import numpy as np
 import requests
-from mvdata import TickerData
-from mvdata import MacroData  
+import mvdata as mvd
 from stochastic.processes.noise import FractionalGaussianNoise
 
 # Make sure you have the three financial statements before inputting the data to calculate
 def weighted_cost(tick: str, fin_state: pd.DataFrame):    
-    stats = MacroData().risk_metrics()
+    stats = mvd.MacroData().risk_metrics()
 
     cols = ["Effective Tax Rate", "Interest Expense", "Total Debt"]
 
@@ -27,6 +26,7 @@ def weighted_cost(tick: str, fin_state: pd.DataFrame):
     
     cost_of_debt = (fin_state["Interest Expense"] / fin_state["Total Debt"]) * (1 - fin_state["Effective Tax Rate"])
     wadc = ((metrics["enterpriseValue"]-metrics["marketCap"]) * cost_of_debt) / metrics["enterpriseValue"]
+    wadc = wadc.values.tolist()[0]
 
     final_values = {
         "WAEC": waec,
@@ -42,7 +42,7 @@ def dcf_fair_value(tick: str, num_years: int, tgv: float):
               "Capital Expenditure", "Change In Net Working Capital", "Cash And Equivalents", 
               "Current Portion of LT Debt", "Total Common Shares Outstanding"]
     
-    ticker = TickerData(tick)
+    ticker = mvd.TickerData(tick)
     
     financials = pd.concat([ticker.get_financials("income-statement"),
                             ticker.get_financials("balance-sheet"),
@@ -110,7 +110,7 @@ def dcf_fair_value(tick: str, num_years: int, tgv: float):
             tv = round((unlevered_fcf.values.tolist()[-1]*(1+waccs[j]))/(waccs[j]-tgvs[i]),1)
             pv_tv = round(tv/((1+waccs[j])**cols2.flatten().tolist()[-1]),1)
 
-            enterprise_value = round(pv_tv + pv_fcf.sum(),1)
+            enterprise_value = pv_tv + pv_fcf.sum()
             fair_value = (enterprise_value+cash-debt)/shares
 
             fair_values[i,j] += round(fair_value,2)
@@ -146,7 +146,7 @@ def hurst_exponent(df: pd.DataFrame, hurst_window: int):
     return sum(hurst_exponents) / len(hurst_exponents)
 
 def monte_carlo(tick: str, num_days: int, point_per_day: float, num_simulations: int):
-    df = TickerData(tick).get_historical_data()
+    df = mvd.TickerData(tick).get_historical_data()
 
     start = df.values.tolist()[-1]
 
