@@ -7,14 +7,27 @@ import datetime as dt
 class TickerData:
     def __init__(self, ticker: str):
         self.ticker = ticker
-        self.rapid_api_key = ""
+        self.rapid_api_key = "81635f7492mshdfd20c9b6cdfd95p18e57djsnca3e7b73408f"
 
     def get_intraday_data(self):
         pass
             
     def get_historical_data(self):
         today = dt.datetime.today()
-        start_date = str(today.year - 4) + "-" + str(today.month) + "-" + str(today.day)
+        start_date = str(today.year - 4) + "-"
+
+        month = today.month
+        day = today.day
+
+        if month < 10:
+         start_date += "0"
+        
+        start_date += (month + "-")
+
+        if day < 10:
+         start_date += "0"
+        
+        start_date += day
 
         df = yf.download(self.ticker,start=start_date)
 
