@@ -197,7 +197,7 @@ def hurst_exponent(df: pd.DataFrame, hurst_window: int):
     return sum(hurst_exponents) / len(hurst_exponents)
 
 def monte_carlo(tick: str, num_days: int, point_per_day: float, num_simulations: int):
-    df = mvd.TickerData(tick).get_historical_data()
+    df = mvD.TickerData(tick).get_historical_data()
 
     start = df.values.tolist()[-1]
 
