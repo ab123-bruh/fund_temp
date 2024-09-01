@@ -7,7 +7,7 @@ import datetime as dt
 class TickerData:
     def __init__(self, ticker: str):
         self.ticker = ticker
-        self.rapid_api_key = "81635f7492mshdfd20c9b6cdfd95p18e57djsnca3e7b73408f"
+        self.rapid_api_key = ""
 
     def get_intraday_data(self):
         pass
