@@ -2,7 +2,7 @@ import pandas as pd
 import yfinance as yf
 import numpy as np
 import requests
-from mvdata import TickerData
+import mvdata as mvD
 
 # Ideally these algos are borrowing from methods in engineering applications so methods from thermodynamics
 # or other disciplines to determine actions in a time series is what users look for
@@ -21,14 +21,14 @@ class MeanReversion:
     def method1(self):
         pass
 
-# Need to add the Kalman Filter method after some more reading and use bt to show performance better or worse
-def tail_action(tickers: list, start_date: str):
+# This needs a lot of reworking and also we will have to add the backtesting code into the repository
+def tail_action(tickers: list):
     tick_str = ""
 
     for tick in tickers:
         tick_str += (tick + " ")
 
-    df = TickerData(tick_str).get_historical_data(start_date=start_date)
+    df = mvD.TickerData(tick_str).get_historical_data()
     window = 50
 
     rolling_mean = df.rolling(window=window).mean()
@@ -40,7 +40,7 @@ def tail_action(tickers: list, start_date: str):
     ticker_action = pd.DataFrame(df.index)
 
     for tick in tickers:
-        ticker_action[tick + "_Signal"] = TickerData(tick).action_tickers(buy_signal,sell_signal)
+        ticker_action[tick + "_Signal"] = mvD.AlgoStats(tick).action_tickers(buy_signal,sell_signal)
 
     date = ticker_action.pop("Date")
     ticker_action = ticker_action.set_index(date)

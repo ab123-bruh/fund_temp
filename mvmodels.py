@@ -2,12 +2,12 @@ import pandas as pd
 import yfinance as yf
 import numpy as np
 import requests
-import mvdata as mvd
+import mvdata as mvD
 from stochastic.processes.noise import FractionalGaussianNoise
 
 # Make sure you have the three financial statements before inputting the data to calculate
 def weighted_cost(tick: str, fin_state: pd.DataFrame):    
-    stats = mvd.MacroData().risk_metrics()
+    stats = mvD.MacroData().risk_metrics()
 
     cols = ["Effective Tax Rate", "Interest Expense", "Total Debt"]
 
@@ -42,7 +42,7 @@ def dcf_fair_value(tick: str, num_years: int, tgv: float):
               "Capital Expenditure", "Change In Net Working Capital", "Cash And Equivalents", 
               "Current Portion of LT Debt", "Total Common Shares Outstanding"]
     
-    ticker = mvd.TickerData(tick)
+    ticker = mvD.TickerData(tick)
     
     financials = pd.concat([ticker.get_financials("income-statement"),
                             ticker.get_financials("balance-sheet"),
@@ -122,8 +122,59 @@ def dcf_fair_value(tick: str, num_years: int, tgv: float):
 def public_comps(tick: str):
     pass
 
-def residual_income(tick: str):
-    pass
+def residual_income(tick: str, num_years: int):
+    inital = ["Book Value / Share", "Diluted EPS"]
+
+    ticker = mvD.TickerData(tick)
+
+    financials = pd.concat([ticker.get_financials("income-statement"),
+                            ticker.get_financials("balance-sheet"),
+                            ticker.get_financials("cash-flow-statement")],axis=0)
+    
+    financials = financials.drop(["TTM", "Last Report"],axis=1)
+
+    waec = weighted_cost(tick,financials)
+
+    financials = financials.loc[financials.index.isin(inital)]
+
+    financials.columns = [int(val[4:]) for val in financials.columns.tolist()]
+    start = max(financials.columns.tolist())
+
+    financials = financials.dropna(axis=1).T 
+    financials = financials[inital]
+
+    if financials.index.values.tolist()[0] == start:
+        financials = financials.iloc[::-1]
+    
+    growth_rates = pd.DataFrame()
+    growth_rates.index = financials.index.values-start
+
+    growth_rates[inital[0]] = (financials[inital[0]]/financials[inital[0]].shift(1)).values-1
+    growth_rates[inital[1]] = (financials[inital[1]]/financials[inital[1]].shift(1)).values-1
+
+    growth_rates = growth_rates.fillna(0)
+
+    growth_rates = growth_rates.T
+    financials = financials.T
+
+    for i,k in zip(range(0,num_years,1), range(start,start+num_years,1)):
+        years = [j for j in range(growth_rates.columns.tolist()[i],i+1,1)]
+        growth_rates[i+1] = growth_rates[years].mean(axis=1)
+        financials[k+1] = financials[k] * (1+growth_rates[i+1])
+        
+    cols1 = financials.columns.tolist()
+    cols1 = np.array(cols1[cols1.index(start+1):])
+
+    begin_book_value = financials.loc[financials.index == inital[0], start].values.tolist()[0]
+
+    financials = financials[cols1]
+    values = financials.T
+
+    residual_income = values["Diluted EPS"] - (values["Book Value / Share"]*waec["WAEC"])
+
+    residual_income = residual_income / ((1+waec["WAEC"]) ** (residual_income.index.values-start))
+
+    return round(begin_book_value + residual_income.sum(),2)
 
 def hurst_exponent(df: pd.DataFrame, hurst_window: int):
     ret = pd.Series(np.log(df.values / df.shift(1).values).dropna())

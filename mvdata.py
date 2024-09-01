@@ -73,12 +73,14 @@ class TickerData:
                 sub_data["value"] = sub_data["value"].str.replace("[$,)]","",regex=True)
                 sub_data["value"] = sub_data["value"].str.replace("(","-")
 
-                if (sub_data["value"].str[-1] == "%").all():
+                if (sub_data["value"].str[-1] == "%").any():
                     sub_data["value"] = sub_data["value"].str.replace("%","")
                     sub_data["value"] = sub_data["value"].replace("-",np.nan)
+                    sub_data["value"] = sub_data["value"].replace("NM",np.nan)
                     sub_data["value"] = sub_data["value"].astype(float)/100
                 else:
                     sub_data["value"] = sub_data["value"].replace("-",np.nan)
+                    sub_data["value"] = sub_data["value"].replace("NM",np.nan)
                     sub_data["value"] = sub_data["value"].astype(float)
                 
                 sub_data = sub_data.rename(columns={"name": "date"})
