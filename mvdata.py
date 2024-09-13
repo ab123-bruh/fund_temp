@@ -8,30 +8,12 @@ class TickerData:
     def __init__(self, ticker: str):
         self.ticker = ticker
         self.rapid_api_key = ""
-
-    def get_intraday_data(self):
-        pass
             
     def get_historical_data(self):
-        today = dt.datetime.today()
-        start_date = str(today.year - 4) + "-"
-
-        month = today.month
-        day = today.day
-
-        if month < 10:
-         start_date += "0"
-        
-        start_date += (month + "-")
-
-        if day < 10:
-         start_date += "0"
-        
-        start_date += day
-
+        start_date = (dt.datetime.today() - pd.Timedelta(days=1825)).strftime("%Y-%m-%d")
         df = yf.download(self.ticker,start=start_date)
 
-        return df["Adj Close"]
+        return df
     
     def options_flow(self):
         options = {}
@@ -41,6 +23,60 @@ class TickerData:
         options["Put"] = flow.puts
 
         return options
+    
+    def get_intraday_data(self, time: str, same_day: bool):
+        if time not in ["1min","5min","15min","30min","60min"]:
+
+            raise ValueError("Invalid API call. Retry or visit https://www.alphavantage.co/documentation/ for valid calls")
+
+        querystring = {
+            "symbol": self.ticker,
+            "function":"TIME_SERIES_INTRADAY",
+            "interval": time,
+            "outputsize": "full"
+        }
+
+        headers = {
+            "x-rapidapi-key": self.rapid_api_key,
+            "x-rapidapi-host": "alpha-vantage.p.rapidapi.com"
+        }
+
+        url = "https://" + headers["x-rapidapi-host"] + "/query"
+
+        response = requests.get(url, headers=headers, params=querystring).json()
+
+        df = pd.DataFrame(response["Time Series (" + time + ")"]).T
+
+        df.columns = ["Open", "High", "Low", "Close", "Volume"]
+
+        if same_day:
+            day = dt.datetime.today().strftime("%Y-%m-%d")
+            df = df.loc[df.index >= day + " 00:00:00"]
+
+        return df
+    
+    def get_technicals(self, indicator: str, period: int):
+        querystring = {
+            "symbol": self.ticker,
+            "function": indicator,
+            "series_type": "close",
+            "time_period": str(period),
+            "interval":"daily"
+        }
+
+        headers = {
+            "x-rapidapi-key": self.rapid_api_key,
+            "x-rapidapi-host": "alpha-vantage.p.rapidapi.com"
+        }
+
+        url = "https://" + headers["x-rapidapi-host"] + "/query"
+
+        response = requests.get(url, headers=headers, params=querystring).json()
+
+        indicator_data = pd.DataFrame(response["Technical Analysis: " + indicator])
+        indicator_data = indicator_data.T.loc[::-1].astype(float)
+
+        return indicator_data
     
     def get_financials(self,statement: str):
         querystring = {
@@ -104,16 +140,19 @@ class MacroData:
 
     def risk_metrics(self):
         def percent_change(df: pd.DataFrame, tick: str):
-            return ((df[tick].iloc[len(df)-1]/df[tick].iloc[0])-1).round(decimals=4)
+            df_tick = df[tick]
+            val = df_tick.iloc[len(df_tick)-1]/df_tick.iloc[0]
+            val = val - 1
+            return val.round(decimals=4)
         
         stats = {}
 
-        tick_compares = TickerData("IWF VTV SPY ^VIX SIZE").get_historical_data().reset_index()
+        tick_compares = TickerData("IWF VTV SPY ^VIX SIZE").get_historical_data()
+        tick_compares = tick_compares["Adj Close"].reset_index()
 
         tick_compares = tick_compares.loc[tick_compares["Date"] >= str(dt.datetime.today().year) + "-01-01"]
 
         treasury = pd.read_html("https://www.multpl.com/10-year-treasury-rate/table/by-year")
-        devi_ratio = round(tick_compares["^VIX"].std()/tick_compares["SPY"].std(),4)
 
         stats["BenchmarkReturn"] = percent_change(tick_compares,"SPY")
         stats["RiskFree"] = round(float(treasury[0].iloc[0,1][:-1])/100,4)
@@ -124,7 +163,7 @@ class MacroData:
         stats["SizePremium"] = round(percent_change(tick_compares,"SIZE")-stats["RiskFree"],4)
 
         stats["VIX/SPY Corr"] = tick_compares.corr(numeric_only=True).loc["^VIX", "SPY"].round(decimals=4)
-        stats["VIX/SPY Beta"] = stats["VIX/SPY Corr"]*devi_ratio
+        stats["VIX/SPY Beta"] = stats["VIX/SPY Corr"]*round(tick_compares["^VIX"].std()/tick_compares["SPY"].std(),4)
 
         return stats
     
@@ -135,9 +174,6 @@ class MacroData:
     def interest_rates(self):
         pass
 
-class PortfolioData:
-    def __init__(self):
-        pass
 
 class AlgoStats:
     def __init__(self, ticker: str):

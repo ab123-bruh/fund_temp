@@ -5,6 +5,12 @@ import requests
 import json
 from concurrent.futures import ThreadPoolExecutor
 
+# need to add the code to get the portfolio data from the broker
+# also need to see if the broker can provide us with historical intraday data 
+    # this would go back to one year 
+    # intraday 1min data as that is a massive sample size
+
+
 class RecommendTicker:
     def __init__(self):
         self.github_branch = "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main"

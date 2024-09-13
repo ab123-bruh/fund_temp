@@ -128,8 +128,7 @@ def residual_income(tick: str, num_years: int):
     ticker = mvD.TickerData(tick)
 
     financials = pd.concat([ticker.get_financials("income-statement"),
-                            ticker.get_financials("balance-sheet"),
-                            ticker.get_financials("cash-flow-statement")],axis=0)
+                            ticker.get_financials("balance-sheet")],axis=0)
     
     financials = financials.drop(["TTM", "Last Report"],axis=1)
 
@@ -170,14 +169,19 @@ def residual_income(tick: str, num_years: int):
     financials = financials[cols1]
     values = financials.T
 
+    cols2 = growth_rates.columns.tolist()
+    cols2 = np.array(cols2[cols2.index(1):])
+
     residual_income = values["Diluted EPS"] - (values["Book Value / Share"]*waec["WAEC"])
 
-    residual_income = residual_income / ((1+waec["WAEC"]) ** (residual_income.index.values-start))
+    pv_res_income = residual_income / ((1+waec["WAEC"]) ** cols2)
 
-    return round(begin_book_value + residual_income.sum(),2)
+    fair_value = begin_book_value + pv_res_income.sum()
+
+    return round(fair_value,2)
 
 def hurst_exponent(df: pd.DataFrame, hurst_window: int):
-    ret = pd.Series(np.log(df.values / df.shift(1).values).dropna())
+    ret = np.log((df/df.shift(1)).dropna().values)
 
     hurst_exponents = []
 
@@ -197,7 +201,7 @@ def hurst_exponent(df: pd.DataFrame, hurst_window: int):
     return sum(hurst_exponents) / len(hurst_exponents)
 
 def monte_carlo(tick: str, num_days: int, point_per_day: float, num_simulations: int):
-    df = mvD.TickerData(tick).get_historical_data()
+    df = mvD.TickerData(tick).get_historical_data()["Adj Close"]
 
     start = df.values.tolist()[-1]
 
