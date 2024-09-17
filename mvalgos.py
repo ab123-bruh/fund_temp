@@ -20,21 +20,31 @@ class TrendFollowing:
         pass
 
 
-# mostly short term type of trading as this will be used when Hurst under .5
+# mostly short term type of trading as this will be used when Hurst under .45 (from .45 to .55 not as reasonable)
 # either over or under bought stock for short term analysis
 class MeanReversion:
     def __init__(self, ticker: str):
         self.ticker = ticker
+    
+    def rsi_measure(self):
+        tick = mvD.EquitiesData(self.ticker)
 
-    # use the enhanced method to improve this method 
-        # need to build the buy and sell points for the algo
-        # get the signal dataframe and return that
-        # backtest the algo for performance
+        df = tick.get_historical_data()["Adj Close"]
+        rsi = tick.get_technicals("RSI", 14)
 
-        # once that is completed, then use the buy and sell signals from the paper to get 
-        # each of the buy and sell signals for the dataset
-    def bollinger_bands(self, num_wma_vars: int):
-        tick = mvD.TickerData(self.ticker)
+        buy_signal = rsi <= 30
+        sell_signal = rsi >= 70
+
+        rsi_index = pd.DataFrame(df.index)
+        rsi_index[self.ticker + "_Signal"] = mvD.AlgoStats(self.ticker).action_tickers(buy_signal,sell_signal)
+
+        date = rsi_index.pop("Date")
+        rsi_index = rsi_index.set_index(date)
+
+        return pd.concat([df,rsi_index],axis=1)
+
+    def bollinger_bands(self, past_days: int):
+        tick = mvD.EquitiesData(self.ticker)
         df = tick.get_historical_data()
         df.index = df.index.strftime("%Y-%m-%d")
 
@@ -43,26 +53,27 @@ class MeanReversion:
         wmas = tick.get_technicals("WMA", 20)
 
         b = np.where(wmas.index == df.index[0])[0].tolist()[0]
-        missing_data = wmas.loc[(wmas.index >= wmas.index[b-num_wma_vars]) & (wmas.index < wmas.index[b])]
+        missing_data = wmas.loc[(wmas.index >= wmas.index[b-past_days]) & (wmas.index < wmas.index[b])]
+        # reversing order
+        missing_data = missing_data.loc[::-1]
 
         wmas = wmas.loc[wmas.index >= df.index[0]]
         wmas.columns = ["WMA_t"]
 
-        for i in range(1,num_wma_vars+1,1):
+        for i in range(1,past_days+1,1):
             wmas["WMA_t-" + str(i)] = wmas["WMA_t"].shift(i).values
-            # reverses the order, gets the values, reverses the order again,
-            # then finally becomes a list so weird lol
-            wmas["WMA_t-" + str(i)].iloc[:i] = missing_data.loc[::-1].iloc[:i].loc[::-1].values.T[0].tolist()
+            # gets the values, reverses the order again, then finally becomes a list so weird lol
+            wmas["WMA_t-" + str(i)].iloc[:i] = missing_data.iloc[:i].loc[::-1].values.T[0].tolist()
         
         df = pd.concat([df,wmas],axis=1)
         # this value is a day ahead of what it will say on the dataset
         # df["WMA_t-0"].shift(-1) essentially is the next days point in time
+        # but it shows as if its the current point in time in the dataset
         df["Diff"] = df["WMA_t"].shift(-1) - df["WMA_t"]
 
         # since the next day WMA won't be there, we will have to add some noise to the current one
         # needs to be better modified to allow for a sense of crazy jumps in one day
-        mean = df["Diff"].mean()
-        temp_kicker = np.random.uniform(low=-mean,high=mean)
+        temp_kicker = np.random.normal(loc=df["Diff"].mean(),scale=df["Diff"].std())
         current_point = df["Diff"].iloc[len(df)-2]
 
         df["Diff"] = df["Diff"].fillna(current_point+temp_kicker)
@@ -118,35 +129,53 @@ class MeanReversion:
 
         adj_close = adj_close.loc[adj_close.index >= test_start]
 
+        position = 0
         buy_signal = []
         sell_signal = []
 
-        # for i in range(len(adj_close)):
+        for i in range(len(adj_close)):
+            state_i = algo_test.iloc[i].to_dict()
+            state_i["Price"] = adj_close.iloc[i]
 
-        # bollinger_band = pd.DataFrame(algo_test.index)
-        # bollinger_band[self.ticker + "_Signal"] = mvD.AlgoStats(self.ticker).action_tickers(buy_signal,sell_signal)
+            if position != 0:
+                if state_i["Predicted WMA_t+1"] < position - (2 * state_i["ATR_t"]):
+                    buy_position = False
+                    sell_position = True
+                    position = 0
+                elif state_i["Predicted WMA_t+1"] >= state_i["Upper Track"]:
+                    buy_position = False
+                    sell_position = True
+                    position = 0
+                elif state_i["Predicted WMA_t+1"] > position + (2 * state_i["ATR_t"]):
+                    buy_position = False
+                    sell_position = True
+                    position = 0
+            elif position == 0:
+                if state_i["Predicted WMA_t+1"] <= state_i["Lower Track"]:
+                    buy_position = True
+                    sell_position = False
+                    position = state_i["Price"]
+                elif state_i["Predicted WMA_t+1"] < state_i["Price"] - (2 * state_i["ATR_t"]):
+                    buy_position = True
+                    sell_position = False
+                    position = state_i["Price"]
+            else:
+                buy_position = False
+                sell_position = False        
+            
+            buy_signal.append(buy_position)
+            sell_signal.append(sell_position)
+        
+        buy_signal = pd.DataFrame(buy_signal,index=adj_close.index,columns=[self.ticker])
+        sell_signal = pd.DataFrame(sell_signal,index=adj_close.index,columns=[self.ticker])
 
-        # date = bollinger_band.pop("Date")
-        # bollinger_band = bollinger_band.set_index(date)
+        bollinger_band = pd.DataFrame(algo_test.index)
+        bollinger_band[self.ticker + "_Signal"] = mvD.AlgoStats(self.ticker).action_tickers(buy_signal,sell_signal)
 
-        # return pd.concat([adj_close,bollinger_band],axis=1)
+        date = bollinger_band.pop("Date")
+        bollinger_band = bollinger_band.set_index(date)
 
-    def rsi_measure(self):
-        tick = mvD.TickerData(self.ticker)
+        return pd.concat([adj_close,bollinger_band],axis=1)
 
-        df = tick.get_historical_data()["Adj Close"]
-        rsi = tick.get_technicals("RSI", 14)
-
-        buy_signal = rsi <= 30
-        sell_signal = rsi >= 70
-
-        rsi_index = pd.DataFrame(df.index)
-        rsi_index[self.ticker + "_Signal"] = mvD.AlgoStats(self.ticker).action_tickers(buy_signal,sell_signal)
-
-        date = rsi_index.pop("Date")
-        rsi_index = rsi_index.set_index(date)
-
-        return pd.concat([df,rsi_index],axis=1)
-    
     def money_flow_measure(self):
         pass

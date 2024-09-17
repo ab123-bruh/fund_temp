@@ -42,7 +42,7 @@ def dcf_fair_value(tick: str, num_years: int, tgv: float):
               "Capital Expenditure", "Change In Net Working Capital", "Cash And Equivalents", 
               "Current Portion of LT Debt", "Total Common Shares Outstanding"]
     
-    ticker = mvD.TickerData(tick)
+    ticker = mvD.EquitiesData(tick)
     
     financials = pd.concat([ticker.get_financials("income-statement"),
                             ticker.get_financials("balance-sheet"),
@@ -125,7 +125,7 @@ def public_comps(tick: str):
 def residual_income(tick: str, num_years: int):
     inital = ["Book Value / Share", "Diluted EPS"]
 
-    ticker = mvD.TickerData(tick)
+    ticker = mvD.EquitiesData(tick)
 
     financials = pd.concat([ticker.get_financials("income-statement"),
                             ticker.get_financials("balance-sheet")],axis=0)
@@ -181,12 +181,12 @@ def residual_income(tick: str, num_years: int):
     return round(fair_value,2)
 
 def hurst_exponent(df: pd.DataFrame, hurst_window: int):
-    ret = np.log((df/df.shift(1)).dropna().values)
+    ret = np.log((df/df.shift(1)).dropna())
 
     hurst_exponents = []
 
-    for start in range(len(ret) - hurst_window):
-        end = start + hurst_window
+    for end in range(len(ret),-1,-1):
+        start = end - hurst_window
         window_data = ret.iloc[start:end]
         
         mean_adj_ts = window_data - np.mean(window_data)
@@ -194,14 +194,19 @@ def hurst_exponent(df: pd.DataFrame, hurst_window: int):
         R = np.max(cumulative_dev) - np.min(cumulative_dev)
         S = np.std(window_data)
         if S == 0 or R == 0:  # Avoid division by zero
-            hurst_exponents.append(np.nan)
+            hurst_exponents.insert(0,np.nan)
         else:
-            hurst_exponents.append(np.log((R / S)) / np.log(len(window_data)))
+            hurst_exponents.insert(0,np.log((R / S)) / np.log(len(window_data)))
     
-    return sum(hurst_exponents) / len(hurst_exponents)
+    hurst_exponents = pd.Series(hurst_exponents)
+
+    hurst_exponents.index = df.index
+    hurst_exponents = hurst_exponents.dropna()
+    
+    return hurst_exponents
 
 def monte_carlo(tick: str, num_days: int, point_per_day: float, num_simulations: int):
-    df = mvD.TickerData(tick).get_historical_data()["Adj Close"]
+    df = mvD.EquitiesData(tick).get_historical_data()["Adj Close"]
 
     start = df.values.tolist()[-1]
 
@@ -211,13 +216,8 @@ def monte_carlo(tick: str, num_days: int, point_per_day: float, num_simulations:
     window = 30
     hurst = hurst_exponent(df,window)
 
-    m = np.log2(len(df)-window)
-
-    lower_bound = hurst - np.e ** (-7.33 * np.log(np.log(m)) + 4.21)
-    upper_bound = hurst + np.e ** (-7.20 * np.log(np.log(m)) + 4.04) 
-
     for i in range(num_simulations):
-        H = np.random.uniform(low=lower_bound,high=upper_bound)
+        H = np.random.normal(loc=hurst.mean(),scale=hurst.std())
         fgn = FractionalGaussianNoise(hurst=H,t=num_days)
         sim = fgn._sample_fractional_gaussian_noise(num_days*point_per_day)
 

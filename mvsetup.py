@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
     # this would go back to one year 
     # intraday 1min data as that is a massive sample size
 
-
+# need to add other tickers for different types of data that can be found
 class RecommendTicker:
     def __init__(self):
         self.github_branch = "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main"

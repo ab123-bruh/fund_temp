@@ -4,7 +4,8 @@ import numpy as np
 import requests
 import datetime as dt
 
-class TickerData:
+# change this to EquitiesData
+class EquitiesData:
     def __init__(self, ticker: str):
         self.ticker = ticker
         self.rapid_api_key = ""
@@ -26,7 +27,6 @@ class TickerData:
     
     def get_intraday_data(self, time: str, same_day: bool):
         if time not in ["1min","5min","15min","30min","60min"]:
-
             raise ValueError("Invalid API call. Retry or visit https://www.alphavantage.co/documentation/ for valid calls")
 
         querystring = {
@@ -134,6 +134,9 @@ class TickerData:
         
         return financials_data
 
+    def get_earnings_revisions(self):
+        pass
+
 class MacroData:
     def __init__(self):
         pass
@@ -147,7 +150,7 @@ class MacroData:
         
         stats = {}
 
-        tick_compares = TickerData("IWF VTV SPY ^VIX SIZE").get_historical_data()
+        tick_compares = EquitiesData("IWF VTV SPY ^VIX SIZE").get_historical_data()
         tick_compares = tick_compares["Adj Close"].reset_index()
 
         tick_compares = tick_compares.loc[tick_compares["Date"] >= str(dt.datetime.today().year) + "-01-01"]
@@ -181,7 +184,7 @@ class AlgoStats:
 
     # This is essentially meant to be a dataframe for backtesting actions
     # Formatting for this will change dependent on what we use to backtest (we may need to create our own)
-    def action_tickers(self,buy_indicator: pd.Series,sell_indicator: pd.Series):
+    def action_tickers(self,buy_indicator: pd.DataFrame,sell_indicator: pd.DataFrame):
         tick_buy = pd.DataFrame(buy_indicator[self.ticker])
         tick_buy["BuySignal"] = "Buy"
         tick_buy = tick_buy.rename(columns={self.ticker:"BuyAction"})
@@ -199,14 +202,14 @@ class AlgoStats:
         hold = actions.loc[(actions["BuySignal"] == "Hold") & (actions["SellSignal"] == "Hold"), "BuySignal"]
 
         actions = pd.concat([buy,sell,hold],axis=0).reset_index()
-        actions.columns = ["Date", self.ticker + "Signal"]
+        actions.columns = ["Date", self.ticker + "_Signal"]
 
         actions = actions.sort_values(by="Date",ascending=True).reset_index(drop=True)
 
         decision = []
         previous_decision = ""
         
-        for value in actions[self.ticker + "Signal"].values.tolist():
+        for value in actions[self.ticker + "_Signal"].values.tolist():
             if value == previous_decision:
                 decision.append("Hold")
             else:
