@@ -11,7 +11,7 @@ class EquitiesData:
         self.rapid_api_key = ""
             
     def get_historical_data(self):
-        start_date = (dt.datetime.today() - pd.Timedelta(days=1825)).strftime("%Y-%m-%d")
+        start_date = (dt.datetime.today() - pd.DateOffset(years=5)).strftime("%Y-%m-%d")
         df = yf.download(self.ticker,start=start_date)
 
         return df
@@ -134,8 +134,37 @@ class EquitiesData:
         
         return financials_data
 
-    def get_earnings_revisions(self):
-        pass
+    def get_estimates(self, field: str, period: str):
+        if field != "eps" or field != "revenues":
+            raise ValueError("The data type must be either 'eps' or 'revenues'.")
+        elif period != "quarterly" or period != "annual":
+            raise ValueError("The time period must be either 'quarterly' or 'annual'.")
+        
+        querystring = {
+            "symbol": "aapl",
+            "data_type": field,
+            "period_type": period
+        }
+
+        headers = {
+            "x-rapidapi-key": self.rapid_api_key,
+            "x-rapidapi-host": "seeking-alpha.p.rapidapi.com"
+        }
+
+        url = "https://" + headers["x-rapidapi-host"] + "/symbols/get-estimates"
+
+        response = requests.get(url, headers=headers, params=querystring).json()
+
+        data = response["data"]
+
+        df = pd.concat([pd.DataFrame(data[i]["attributes"],index=[0]) 
+                        for i in range(len(data))],axis=0).reset_index(drop=True)
+
+        df.index = df["period_end_date"].values
+
+        df = df[["actual","consensus"]]
+
+        return df
 
 class MacroData:
     def __init__(self):
