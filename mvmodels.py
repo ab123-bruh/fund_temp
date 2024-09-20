@@ -119,9 +119,6 @@ def dcf_fair_value(tick: str, num_years: int, tgv: float):
 
     return fair_values
 
-def public_comps(tick: str):
-    pass
-
 def residual_income(tick: str, num_years: int):
     inital = ["Book Value / Share", "Diluted EPS"]
 
@@ -232,3 +229,8 @@ def monte_carlo(tick: str, num_days: int, point_per_day: float, num_simulations:
     simulation = pd.DataFrame(simulation) + start
 
     return simulation
+
+def value_at_risk(tick: str):
+    df = monte_carlo(tick,252,1,1000)
+
+    

@@ -6,6 +6,7 @@ import mvdata as mvD
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import TimeSeriesSplit
 
+
 # Ideally these algos are borrowing from methods in engineering applications so methods from thermodynamics
 # or other disciplines to determine actions in a time series is what users look for
 # need to also use simple indicators so that we are able to bootstrap methods with current avaliable funds
@@ -13,11 +14,14 @@ from sklearn.model_selection import TimeSeriesSplit
 # this one will be more so identifying most important variables to watch for using ML 
 # trend is either up or down here
 class TrendFollowing:
-    def __init__(self):
-        pass
-
-    def lstm(self):
-        pass
+    def __init__(self, ticker: str):
+        self.ticker = ticker
+    
+    # in short, create a regression and evaluate the coefficient of the volume in relation to the price
+    # greater than 0 means its positive trending and less than 0 means negative trending
+    # use the correlation as one of the indicators of the price movement as well
+    def volume_to_price(self):
+        df = mvD.EquitiesData(self.ticker).get_historical_data()
 
 
 # mostly short term type of trading as this will be used when Hurst under .45 (from .45 to .55 not as reasonable)
@@ -178,4 +182,4 @@ class MeanReversion:
         return pd.concat([adj_close,bollinger_band],axis=1)
 
     def money_flow_measure(self):
-        pass
+        pass    
