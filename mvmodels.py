@@ -233,4 +233,3 @@ def monte_carlo(tick: str, num_days: int, point_per_day: float, num_simulations:
 def value_at_risk(tick: str):
     df = monte_carlo(tick,252,1,1000)
 
-    

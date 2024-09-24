@@ -4,6 +4,7 @@ import numpy as np
 import requests
 import mvdata as mvD
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import TimeSeriesSplit
 
 
@@ -23,6 +24,67 @@ class TrendFollowing:
     def volume_to_price(self):
         df = mvD.EquitiesData(self.ticker).get_historical_data()
 
+        df["Volume_dt"] = df["Volume"].pct_change().fillna(0)
+        df["NextOpen"] = df["Open"].shift(-1).fillna(df["Close"].iloc[len(df)-1])
+
+        X = df[["Close","Volume_dt"]]
+        y = df["NextOpen"]
+        tscv = TimeSeriesSplit(n_splits=5)
+
+        volume_coef = 0
+        price = []
+
+        for train_index, test_index in tscv.split(X):
+            X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+            y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+
+            model = LinearRegression().fit(X_train,y_train)
+
+            y_pred = model.predict(X_test)
+
+            volume_coef += model.coef_[2]/5
+
+            results = {
+                "True Values": y_test.values,
+                "Predicted Values": y_pred
+            }
+
+            results = pd.DataFrame(results,index=y_test.index)
+
+            price.append(results)
+        
+        price = pd.concat(price)
+        test_start = price.index[0]
+        val = len(df) - len(price)
+
+        price = pd.concat([pd.DataFrame(index=df.index[:val]),price])
+
+        price["True Values"].iloc[:val] = df["NextOpen"].iloc[:val]
+        price["Predicted Values"].iloc[:val] = df["NextOpen"].iloc[:val]
+
+        correlation = []
+        corr_window = 50
+
+        for end in range(len(price),0,-1):
+            vol_window = df["Volume_dt"].iloc[end-corr_window:end]
+            price_window = price["Predicted Values"].iloc[end-corr_window:end]
+            correlation.insert(0,vol_window.corr(price_window,method="spearman"))
+        
+        price["Correlation"] = correlation
+
+        price = price.loc[price.index >= test_start]
+        adj_close = df.loc[df.index >= test_start, "Adj Close"]
+        
+        buy_signal = price["Correlation"] >= abs(volume_coef)
+        sell_signal = price["Correlation"] < abs(volume_coef)
+
+        vol_price = pd.DataFrame(price.index)
+        vol_price[self.ticker + "_Signal"] = mvD.AlgoStats(self.ticker).action_tickers(buy_signal,sell_signal)
+
+        date = vol_price.pop("Date")
+        vol_price = vol_price.set_index(date)
+
+        return pd.concat([adj_close,vol_price],axis=1)
 
 # mostly short term type of trading as this will be used when Hurst under .45 (from .45 to .55 not as reasonable)
 # either over or under bought stock for short term analysis
