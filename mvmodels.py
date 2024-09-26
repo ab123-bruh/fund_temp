@@ -14,7 +14,7 @@ def weighted_cost(tick: str, fin_state: pd.DataFrame):
     fin_state = fin_state.loc[fin_state.index.isin(cols)]
     fin_state = fin_state.dropna(axis=1).T 
     fin_state = fin_state[cols]
-    fin_state = fin_state.loc[fin_state.index == max(fin_state.columns.tolist())]
+    fin_state = fin_state.loc[fin_state.index == max(fin_state.index.tolist())]
 
     metrics = {col: yf.Ticker(tick).info[col] for col in ["beta", "marketCap", "enterpriseValue"]}
 
