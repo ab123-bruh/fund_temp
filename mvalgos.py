@@ -7,6 +7,8 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import TimeSeriesSplit
 
+# FYI these models for now are just getting fed from EquitiesData but in future these algorthims apply 
+# for all different tradable financial products
 
 # Ideally these algos are borrowing from methods in engineering applications so methods from thermodynamics
 # or other disciplines to determine actions in a time series is what users look for
@@ -59,8 +61,8 @@ class TrendFollowing:
 
         price = pd.concat([pd.DataFrame(index=df.index[:val]),price])
 
-        price["True Values"].iloc[:val] = df["NextOpen"].iloc[:val]
-        price["Predicted Values"].iloc[:val] = df["NextOpen"].iloc[:val]
+        price["True Values"].iloc[:val] = y.iloc[:val]
+        price["Predicted Values"].iloc[:val] = y.iloc[:val]
 
         correlation = []
         corr_window = 50
@@ -75,8 +77,8 @@ class TrendFollowing:
         price = price.loc[price.index >= test_start]
         adj_close = df.loc[df.index >= test_start, "Adj Close"]
         
-        buy_signal = price["Correlation"] >= abs(volume_coef)
-        sell_signal = price["Correlation"] < abs(volume_coef)
+        buy_signal = price["Correlation"] >= volume_coef
+        sell_signal = price["Correlation"] < volume_coef
 
         vol_price = pd.DataFrame(price.index)
         vol_price[self.ticker + "_Signal"] = mvD.AlgoStats(self.ticker).action_tickers(buy_signal,sell_signal)

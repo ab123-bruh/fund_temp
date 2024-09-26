@@ -5,13 +5,15 @@ import requests
 import json
 from concurrent.futures import ThreadPoolExecutor
 
+
+
 # need to add the code to get the portfolio data from the broker
 # also need to see if the broker can provide us with historical intraday data 
     # this would go back to one year 
     # intraday 1min data as that is a massive sample size
 
 # need to add other tickers for different types of data that can be found
-class RecommendTicker:
+class EquitiesTickers:
     def __init__(self):
         self.github_branch = "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main"
         self.exchanges = ["nyse", "nasdaq", "amex"]
@@ -49,7 +51,7 @@ class RecommendTicker:
             
             return value
 
-        tickers = RecommendTicker().get_tickers()
+        tickers = EquitiesTickers().get_tickers()
 
         tickers = tickers.drop(["url"],axis=1)
         tickers = tickers.loc[(tickers["marketCap"] < 2000000000) & (tickers["lastsale"] > 5) 
@@ -75,3 +77,27 @@ class RecommendTicker:
         tickers = pd.concat([tickers,pd.DataFrame(metric_arrays)],axis=1).dropna()
         
         return tickers
+
+class EconIndicatorsTickers:
+    def __init__(self):
+        self.querystring = {
+            "api_key": "dc0d23814216e498df77d56c353faca9",
+            "file_type": "json"
+        }
+
+        self.main_ids = [32991,10,32992,1,32455,32263,3008,33060]
+
+    # need to use the reference points from FRED to ensure sufficient collection of econ variables
+    def econ_variables(self, category: int):
+        self.querystring["category_id"] = category
+
+        headers = {
+            "cache-control": "no-control"
+        }
+
+        url = "https://api.stlouisfed.org/fred/category/series"
+
+        response = requests.get(url,headers=headers,params=self.fred_querystring).json()
+
+        return pd.DataFrame(response["seriess"])
+    

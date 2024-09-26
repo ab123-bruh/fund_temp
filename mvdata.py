@@ -55,6 +55,7 @@ class EquitiesData:
 
         return df
     
+    # may need to have this in other areas as well
     def get_technicals(self, indicator: str, period: int):
         querystring = {
             "symbol": self.ticker,
@@ -134,16 +135,14 @@ class EquitiesData:
         
         return financials_data
 
-    def get_estimates(self, field: str, period: str):
+    def get_estimates(self, field: str):
         if field != "eps" or field != "revenues":
             raise ValueError("The data type must be either 'eps' or 'revenues'.")
-        elif period != "quarterly" or period != "annual":
-            raise ValueError("The time period must be either 'quarterly' or 'annual'.")
         
         querystring = {
-            "symbol": "aapl",
+            "symbol": self.ticker.lower(),
             "data_type": field,
-            "period_type": period
+            "period_type": 'quarterly'
         }
 
         headers = {
@@ -166,8 +165,8 @@ class EquitiesData:
 
         return df
 
-class MacroData:
-    def __init__(self):
+class EconIndicatorsData:
+    def __init__(self) -> None:
         pass
 
     def risk_metrics(self):
@@ -198,16 +197,8 @@ class MacroData:
         stats["VIX/SPY Beta"] = stats["VIX/SPY Corr"]*round(tick_compares["^VIX"].std()/tick_compares["SPY"].std(),4)
 
         return stats
-    
-    # have all macro econ data of interest up to max number of points
-    def fred_data(self):
-        pass
 
-    def interest_rates(self):
-        pass
-
-
-class AlgoStats:
+class AlgoStatsData:
     def __init__(self, ticker: str):
         self.ticker = ticker
 

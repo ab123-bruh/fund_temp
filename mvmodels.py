@@ -7,7 +7,7 @@ from stochastic.processes.noise import FractionalGaussianNoise
 
 # Make sure you have the three financial statements before inputting the data to calculate
 def weighted_cost(tick: str, fin_state: pd.DataFrame):    
-    stats = mvD.MacroData().risk_metrics()
+    stats = mvD.EconIndicatorsData().risk_metrics()
 
     cols = ["Effective Tax Rate", "Interest Expense", "Total Debt"]
 
@@ -24,7 +24,7 @@ def weighted_cost(tick: str, fin_state: pd.DataFrame):
     cost_of_equity = stats["RiskFree"] + (metrics["beta"]*stats["RiskPremium"])
     waec = (metrics["marketCap"] * cost_of_equity)/metrics["enterpriseValue"]
     
-    cost_of_debt = (fin_state["Interest Expense"] / fin_state["Total Debt"]) * (1 - fin_state["Effective Tax Rate"])
+    cost_of_debt = (-fin_state["Interest Expense"] / fin_state["Total Debt"]) * (1 - fin_state["Effective Tax Rate"])
     wadc = ((metrics["enterpriseValue"]-metrics["marketCap"]) * cost_of_debt) / metrics["enterpriseValue"]
     wadc = wadc.values.tolist()[0]
 
