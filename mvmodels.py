@@ -16,24 +16,28 @@ def weighted_cost(tick: str, fin_state: pd.DataFrame):
     fin_state = fin_state[cols]
     fin_state = fin_state.loc[fin_state.index == max(fin_state.index.tolist())]
 
+    # refer to the inital dataset which needs revamping
+    # if needed, calculate these on my own
     metrics = {col: yf.Ticker(tick).info[col] for col in ["beta", "marketCap", "enterpriseValue"]}
 
     cost_of_equity = stats["RiskFree"] + (metrics["beta"]*stats["RiskPremium"])
     waec = (metrics["marketCap"] * cost_of_equity)/metrics["enterpriseValue"]
+    waec = round(waec,4)
     
     cost_of_debt = (-fin_state["Interest Expense"] / fin_state["Total Debt"]) * (1 - fin_state["Effective Tax Rate"])
     wadc = ((metrics["enterpriseValue"]-metrics["marketCap"]) * cost_of_debt) / metrics["enterpriseValue"]
     wadc = wadc.values.tolist()[0]
+    wadc = round(wadc,4)
 
     final_values = {
-        "WAEC": round(waec,4),
-        "WADC": round(wadc,4),
+        "WAEC": waec,
+        "WADC": wadc,
         "WACC": waec + wadc
     }
 
     return final_values
 
-# Possibly put the tgv as the CPI change YoY as that measures inflation
+
 def dcf_fair_value(tick: str, num_years: int, tgv: float):
     inital = ["Total Revenues", "EBIT", "Income Tax Expense", "Depreciation & Amortization", 
               "Capital Expenditure", "Change In Net Working Capital", "Cash And Equivalents", 
@@ -98,7 +102,7 @@ def dcf_fair_value(tick: str, num_years: int, tgv: float):
     cols2 = np.array(cols2[cols2.index(1):])
 
     tgvs = [tgv+(i*.005) for i in range(-2,10,1)]
-    waccs = [round(wacc["WACC"]+(i*.004),2) for i in range(-2,5,1)]
+    waccs = [wacc["WACC"]+(i*.004) for i in range(-2,5,1)]
 
     fair_values = np.zeros((len(tgvs),len(waccs)))
 
