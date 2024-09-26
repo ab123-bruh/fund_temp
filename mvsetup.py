@@ -82,22 +82,24 @@ class EconIndicatorsTickers:
     def __init__(self):
         self.querystring = {
             "api_key": "dc0d23814216e498df77d56c353faca9",
-            "file_type": "json"
+            "file_type": "json",
+            "limit": 1000,
+
         }
 
+        self.headers = {"cache-control": "no-control"}
         self.main_ids = [32991,10,32992,1,32455,32263,3008,33060]
+    
+    def get_children(self):
+        pass
 
     # need to use the reference points from FRED to ensure sufficient collection of econ variables
     def econ_variables(self, category: int):
         self.querystring["category_id"] = category
 
-        headers = {
-            "cache-control": "no-control"
-        }
-
         url = "https://api.stlouisfed.org/fred/category/series"
 
-        response = requests.get(url,headers=headers,params=self.fred_querystring).json()
+        response = requests.get(url,headers=self.headers,params=self.fred_querystring).json()
 
         return pd.DataFrame(response["seriess"])
     
