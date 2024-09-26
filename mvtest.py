@@ -3,4 +3,4 @@
 # If any errors are identified, they need to be immediately logged and "sent over" for fixing
 from mvmodels import dcf_fair_value
 
-print(dcf_fair_value("SBUX",5,.025))
+print(dcf_fair_value("ANF",5,.025))

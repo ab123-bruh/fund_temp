@@ -12,12 +12,9 @@ def weighted_cost(tick: str, fin_state: pd.DataFrame):
     cols = ["Effective Tax Rate", "Interest Expense", "Total Debt"]
 
     fin_state = fin_state.loc[fin_state.index.isin(cols)]
-    fin_state.columns = [int(val[4:]) for val in fin_state.columns.tolist()]
-    present = max(fin_state.columns.tolist())
-
     fin_state = fin_state.dropna(axis=1).T 
     fin_state = fin_state[cols]
-    fin_state = fin_state.loc[fin_state.index == present]
+    fin_state = fin_state.loc[fin_state.index == max(fin_state.columns.tolist())]
 
     metrics = {col: yf.Ticker(tick).info[col] for col in ["beta", "marketCap", "enterpriseValue"]}
 
@@ -29,8 +26,8 @@ def weighted_cost(tick: str, fin_state: pd.DataFrame):
     wadc = wadc.values.tolist()[0]
 
     final_values = {
-        "WAEC": waec,
-        "WADC": wadc,
+        "WAEC": round(waec,4),
+        "WADC": round(wadc,4),
         "WACC": waec + wadc
     }
 
@@ -40,7 +37,7 @@ def weighted_cost(tick: str, fin_state: pd.DataFrame):
 def dcf_fair_value(tick: str, num_years: int, tgv: float):
     inital = ["Total Revenues", "EBIT", "Income Tax Expense", "Depreciation & Amortization", 
               "Capital Expenditure", "Change In Net Working Capital", "Cash And Equivalents", 
-              "Current Portion of LT Debt", "Total Common Shares Outstanding"]
+              "Total Common Shares Outstanding"]
     
     ticker = mvD.EquitiesData(tick)
     
@@ -50,25 +47,26 @@ def dcf_fair_value(tick: str, num_years: int, tgv: float):
     
     financials = financials.drop(["TTM", "Last Report"],axis=1)
 
-    wacc = weighted_cost(tick,financials)
-    
-    financials = financials.loc[financials.index.isin(inital)]
-    financials = financials[~financials.index.duplicated(keep="first")]
-
     financials.columns = [int(val[4:]) for val in financials.columns.tolist()]
-    start = max(financials.columns.tolist())
 
-    financials = financials.dropna(axis=1).T 
-    financials = financials[inital]
+    wacc = weighted_cost(tick,financials)
+    start = max(financials.columns.tolist())
 
     if financials.index.values.tolist()[0] == start:
         financials = financials.iloc[::-1]
     
-    cash = financials.loc[financials.index == start,inital[-3]].values.tolist()[0]
-    debt = financials.loc[financials.index == start,inital[-2]].values.tolist()[0]
-    shares = financials.loc[financials.index == start,inital[-1]].values.tolist()[0]
+    financials = financials.T 
 
-    financials = financials.drop(inital[6:],axis=1)
+    cash = financials.loc[financials.index == start,"Cash And Equivalents"].values.tolist()[0]
+    shares = financials.loc[financials.index == start,"Total Common Shares Outstanding"].values.tolist()[0]
+    
+    debt = 0
+    for fin in ["Short-Term Borrowings", "Current Portion of Lease Obligations", 
+                "Long-Term Debt", "Capital Leases"]:
+        if fin in financials.columns.tolist():
+            debt += financials.loc[financials.index == start, fin].values.tolist()[0]
+
+    financials = financials[inital[:len(inital)-2]]
 
     growth_rates = pd.DataFrame()
     growth_rates.index = financials.index.values-start
@@ -76,30 +74,31 @@ def dcf_fair_value(tick: str, num_years: int, tgv: float):
     growth_rates["Total Revenues"] = (financials["Total Revenues"]/financials["Total Revenues"].shift(1)).values-1
     growth_rates["EBIT"] = (financials["EBIT"]/financials["Total Revenues"]).values
 
-    for col in inital[2:6]:
+    for col in inital[2:]:
         growth_rates[col] = (financials[col]/financials["EBIT"]).values
 
     growth_rates = growth_rates.T
-    financials = financials.T
+    values = financials.T
 
     for i,k in zip(range(0,num_years,1), range(start,start+num_years,1)):
         years = [j for j in range(growth_rates.columns.tolist()[i],i+1,1)]
         growth_rates[i+1] = growth_rates[years].mean(axis=1)
-        financials[k+1] = financials[k] * (1+growth_rates[i+1])
+        values[k+1] = values[k] * (1+growth_rates[i+1])
 
-    cols1 = financials.columns.tolist()
+    cols1 = values.columns.tolist()
     cols1 = np.array(cols1[cols1.index(start+1):])
 
     financials = financials[cols1]
-    values = financials.T                  
+    values = values.T                  
 
-    unlevered_fcf = values[inital[1]]-values[inital[2]]+values[inital[3]]-values[inital[4]]-values[inital[5]]
+    unlevered_fcf = values["EBIT"]-values["Income Tax Expense"]+values["Depreciation & Amortization"]\
+        -values["Capital Expenditure"]-values["Change In Net Working Capital"]
     
     cols2 = growth_rates.columns.tolist()
     cols2 = np.array(cols2[cols2.index(1):])
 
     tgvs = [tgv+(i*.005) for i in range(-2,10,1)]
-    waccs = [wacc["WACC"]+(i*.004) for i in range(-2,5,1)]
+    waccs = [round(wacc["WACC"]+(i*.004),2) for i in range(-2,5,1)]
 
     fair_values = np.zeros((len(tgvs),len(waccs)))
 
