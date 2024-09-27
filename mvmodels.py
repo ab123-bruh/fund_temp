@@ -20,7 +20,7 @@ def weighted_cost(tick: str, fin_state: pd.DataFrame):
     # if needed, calculate these on my own
     metrics = {col: yf.Ticker(tick).info[col] for col in ["beta", "marketCap", "enterpriseValue"]}
 
-    cost_of_equity = stats["RiskFree"] + (metrics["beta"]*stats["RiskPremium"])
+    cost_of_equity = stats["RiskFree"] + (metrics["beta"]*stats["ValuePremium"])
     waec = (metrics["marketCap"] * cost_of_equity)/metrics["enterpriseValue"]
     waec = round(waec,4)
     
