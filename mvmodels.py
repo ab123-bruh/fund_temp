@@ -77,15 +77,17 @@ def dcf_fair_value(tick: str, num_years: int, tgv: float):
 
     growth_rates["Total Revenues"] = (financials["Total Revenues"]/financials["Total Revenues"].shift(1)).values-1
     growth_rates["EBIT"] = (financials["EBIT"]/financials["Total Revenues"]).values
+    growth_rates["Income Tax Expense"] = (financials["Income Tax Expense"]/financials["EBIT"]).values
 
-    for col in inital[2:6]:
-        growth_rates[col] = (financials[col]/financials["EBIT"]).values
+    for col in inital[3:6]:
+        growth_rates[col] = (financials[col]/financials["Total Revenues"]).values
 
     growth_rates = growth_rates.T
     values = financials.T
 
     for i,k in zip(range(0,num_years,1), range(start,start+num_years,1)):
-        years = [j for j in range(growth_rates.columns.tolist()[i],i+1,1)]
+        history = growth_rates.columns.tolist()[i]
+        years = [j for j in range(history,i+1,1)]
         growth_rates[i+1] = growth_rates[years].mean(axis=1)
         values[k+1] = values[k] * (1+growth_rates[i+1])
 
