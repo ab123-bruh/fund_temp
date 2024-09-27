@@ -8,7 +8,7 @@ import datetime as dt
 class EquitiesData:
     def __init__(self, ticker: str):
         self.ticker = ticker
-        self.rapid_api_key = ""
+        self.rapid_api_key = "81635f7492mshdfd20c9b6cdfd95p18e57djsnca3e7b73408f"
             
     def get_historical_data(self):
         start_date = (dt.datetime.today() - pd.DateOffset(years=5)).strftime("%Y-%m-%d")

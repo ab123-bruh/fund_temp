@@ -99,8 +99,8 @@ def dcf_fair_value(tick: str, num_years: int, tgv: float):
     values = values[cols1]
     values = values.T                  
 
-    unlevered_fcf = values["EBIT"]-values["Income Tax Expense"]+values["Depreciation & Amortization"]\
-        -values["Capital Expenditure"]-values["Change In Net Working Capital"]
+    unlevered_fcf = values["EBIT"]-values["Income Tax Expense"]+values["Depreciation & Amortization, Total"]\
+        +values["Capital Expenditure"]-values["Change In Net Working Capital"]
     
     cols2 = growth_rates.columns.tolist()
     cols2 = np.array(cols2[cols2.index(1):])
