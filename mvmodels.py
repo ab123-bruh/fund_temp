@@ -39,7 +39,7 @@ def weighted_cost(tick: str, fin_state: pd.DataFrame):
 
 
 def dcf_fair_value(tick: str, num_years: int, tgv: float):
-    inital = ["Total Revenues", "EBIT", "Income Tax Expense", "Depreciation & Amortization", 
+    inital = ["Total Revenues", "EBIT", "Income Tax Expense", "Depreciation & Amortization, Total", 
               "Capital Expenditure", "Change In Net Working Capital", "Cash And Equivalents", 
               "Total Common Shares Outstanding"]
     
