@@ -4,4 +4,4 @@
 from mvmodels import dcf_fair_value
 import yfinance as yf
 
-print(dcf_fair_value("SBUX",5,.025))
+print(dcf_fair_value(tick="SBUX",num_years=5,tgv=.025))

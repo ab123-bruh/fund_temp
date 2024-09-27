@@ -81,7 +81,7 @@ class EquitiesTickers:
 class EconIndicatorsTickers:
     def __init__(self):
         self.querystring = {
-            "api_key": "dc0d23814216e498df77d56c353faca9",
+            "api_key": "",
             "file_type": "json",
             "limit": 1000,
 
