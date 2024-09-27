@@ -51,6 +51,7 @@ def dcf_fair_value(tick: str, num_years: int, tgv: float):
     
     financials = financials.drop(["TTM", "Last Report"],axis=1)
 
+    financials = financials.astype(float)
     financials.columns = [int(val[4:]) for val in financials.columns.tolist()]
 
     wacc = weighted_cost(tick,financials)
@@ -59,7 +60,7 @@ def dcf_fair_value(tick: str, num_years: int, tgv: float):
     if financials.index.values.tolist()[0] == start:
         financials = financials.iloc[::-1]
     
-    financials = financials.T 
+    financials = financials[~financials.index.duplicated(keep="first")].T 
 
     cash = financials.loc[financials.index == start,"Cash And Equivalents"].values.tolist()[0]
     shares = financials.loc[financials.index == start,"Total Common Shares Outstanding"].values.tolist()[0]
@@ -68,7 +69,8 @@ def dcf_fair_value(tick: str, num_years: int, tgv: float):
     for fin in ["Short-Term Borrowings", "Current Portion of Lease Obligations", 
                 "Long-Term Debt", "Capital Leases"]:
         if fin in financials.columns.tolist():
-            debt += financials.loc[financials.index == start, fin].values.tolist()[0]
+            val = financials.loc[financials.index == start, fin].values.tolist()[0]
+            debt += val
 
     financials = financials[inital[:len(inital)-2]]
 
