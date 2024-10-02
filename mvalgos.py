@@ -31,7 +31,9 @@ class TrendFollowing:
 
         X = df[["Close","Volume_dt"]]
         y = df["NextOpen"]
-        tscv = TimeSeriesSplit(n_splits=5)
+
+        n_splits = 5
+        tscv = TimeSeriesSplit(n_splits=n_splits)
 
         volume_coef = 0
         price = []
@@ -44,7 +46,7 @@ class TrendFollowing:
 
             y_pred = model.predict(X_test)
 
-            volume_coef += model.coef_[2]/5
+            volume_coef += model.coef_[1]/n_splits
 
             results = {
                 "True Values": y_test.values,
@@ -76,9 +78,14 @@ class TrendFollowing:
 
         price = price.loc[price.index >= test_start]
         adj_close = df.loc[df.index >= test_start, "Adj Close"]
+
+        # There will times where the coefficient is in-between 
+        sell_signal = price["Correlation"] < volume_coef
+
+        if volume_coef < -.01:
+            volume_coef = 0
         
         buy_signal = price["Correlation"] >= volume_coef
-        sell_signal = price["Correlation"] < volume_coef
 
         vol_price = pd.DataFrame(price.index)
         vol_price[self.ticker + "_Signal"] = mvD.AlgoStats(self.ticker).action_tickers(buy_signal,sell_signal)

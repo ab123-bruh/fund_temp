@@ -42,16 +42,15 @@ def dcf_fair_value(tick: str, num_years: int, tgv: float):
     inital = ["Total Revenues", "EBIT", "Income Tax Expense", "Depreciation & Amortization, Total", 
               "Capital Expenditure", "Change In Net Working Capital", "Cash And Equivalents", 
               "Total Common Shares Outstanding"]
-    
+
     ticker = mvD.EquitiesData(tick)
-    
+
     financials = pd.concat([ticker.get_financials("income-statement"),
                             ticker.get_financials("balance-sheet"),
                             ticker.get_financials("cash-flow-statement")],axis=0)
     
     financials = financials.drop(["TTM", "Last Report"],axis=1)
 
-    financials = financials.astype(float)
     financials.columns = [int(val[4:]) for val in financials.columns.tolist()]
 
     wacc = weighted_cost(tick,financials)
@@ -59,12 +58,12 @@ def dcf_fair_value(tick: str, num_years: int, tgv: float):
 
     if financials.index.values.tolist()[0] == start:
         financials = financials.iloc[::-1]
-    
+
     financials = financials[~financials.index.duplicated(keep="first")].T 
 
     cash = financials.loc[financials.index == start,"Cash And Equivalents"].values.tolist()[0]
     shares = financials.loc[financials.index == start,"Total Common Shares Outstanding"].values.tolist()[0]
-    
+
     debt = 0
     for fin in ["Short-Term Borrowings", "Current Portion of Lease Obligations", 
                 "Long-Term Debt", "Capital Leases"]:
@@ -85,37 +84,50 @@ def dcf_fair_value(tick: str, num_years: int, tgv: float):
         growth_rates[col] = (financials[col]/financials["Total Revenues"]).values
 
     growth_rates = growth_rates.T
-    values = financials.T
+    growth_rates[-4] = np.nan
+
+    vals = financials.T
 
     for i,k in zip(range(0,num_years,1), range(start,start+num_years,1)):
         history = growth_rates.columns.tolist()[i]
         years = [j for j in range(history,i+1,1)]
         growth_rates[i+1] = growth_rates[years].mean(axis=1)
-        values[k+1] = values[k] * (1+growth_rates[i+1])
+        vals[k+1] = vals[k] * (1+growth_rates[i+1])
 
-    cols1 = values.columns.tolist()
+        # adjusting to the DCF that is there already
+        val_calc = vals[k+1].loc[vals[k+1].index.isin(inital[:3])].values
+        growth_calc = growth_rates[i+1].loc[growth_rates[i+1].index.isin(inital[:3])].values
+
+        next_ebit = val_calc[0] * growth_calc[1]
+        next_tax = next_ebit * growth_calc[2]
+        vals[k+1].loc[vals[k+1].index == "EBIT"] = next_ebit
+        vals[k+1].loc[vals[k+1].index == "Income Tax Expense"] = next_tax
+
+    cols1 = vals.columns.tolist()
     cols1 = np.array(cols1[cols1.index(start+1):])
 
-    values = values[cols1]
-    values = values.T                  
+    vals = vals.T
+    vals["EBIT"] = vals["EBIT"].shift(1)            
+    vals["Income Tax Expense"] = vals["Income Tax Expense"].shift(1)            
+    vals = vals.loc[vals.index.isin(cols1)]                  
 
-    unlevered_fcf = values["EBIT"]-values["Income Tax Expense"]+values["Depreciation & Amortization, Total"]\
-        +values["Capital Expenditure"]-values["Change In Net Working Capital"]
+    unlevered_fcf = vals[inital[1]]-vals[inital[2]]+vals[inital[3]]-vals[inital[4]]-vals[inital[5]]
+    unlevered_fcf = unlevered_fcf.values
     
     cols2 = growth_rates.columns.tolist()
     cols2 = np.array(cols2[cols2.index(1):])
 
-    tgvs = [tgv+(i*.005) for i in range(-2,10,1)]
-    waccs = [wacc["WACC"]+(i*.004) for i in range(-2,5,1)]
+    tgvs = [tgv+(i*.005) for i in range(-2,num_years,1)]
+    waccs = [wacc["WACC"]+(i*.004) for i in range(-2,num_years,1)]
 
     fair_values = np.zeros((len(tgvs),len(waccs)))
 
     for i in range(len(tgvs)):
         for j in range(len(waccs)):
-            pv_fcf = unlevered_fcf.values/((1+waccs[j])**cols2)
+            pv_fcf = unlevered_fcf/((1+waccs[j])**cols2)
 
-            tv = round((unlevered_fcf.values.tolist()[-1]*(1+waccs[j]))/(waccs[j]-tgvs[i]),1)
-            pv_tv = round(tv/((1+waccs[j])**cols2.flatten().tolist()[-1]),1)
+            tv = (unlevered_fcf[-1]*(1+waccs[j]))/(waccs[j]-tgvs[i])
+            pv_tv = tv/((1+waccs[j])**cols2[-1])
 
             enterprise_value = pv_tv + pv_fcf.sum()
             fair_value = (enterprise_value+cash-debt)/shares
