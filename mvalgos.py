@@ -88,7 +88,7 @@ class TrendFollowing:
         buy_signal = price["Correlation"] >= volume_coef
 
         vol_price = pd.DataFrame(price.index)
-        vol_price[self.ticker + "_Signal"] = mvD.AlgoStats(self.ticker).action_tickers(buy_signal,sell_signal)
+        vol_price[self.ticker + "_Signal"] = mvD.AlgoStatsData(self.ticker).action_tickers(buy_signal,sell_signal)
 
         date = vol_price.pop("Date")
         vol_price = vol_price.set_index(date)
@@ -101,6 +101,9 @@ class MeanReversion:
     def __init__(self, ticker: str):
         self.ticker = ticker
     
+    def ibs_indicator(self):
+        pass
+    
     def rsi_measure(self):
         tick = mvD.EquitiesData(self.ticker)
 
@@ -111,7 +114,7 @@ class MeanReversion:
         sell_signal = rsi >= 70
 
         rsi_index = pd.DataFrame(df.index)
-        rsi_index[self.ticker + "_Signal"] = mvD.AlgoStats(self.ticker).action_tickers(buy_signal,sell_signal)
+        rsi_index[self.ticker + "_Signal"] = mvD.AlgoStatsData(self.ticker).action_tickers(buy_signal,sell_signal)
 
         date = rsi_index.pop("Date")
         rsi_index = rsi_index.set_index(date)
@@ -245,7 +248,7 @@ class MeanReversion:
         sell_signal = pd.DataFrame(sell_signal,index=adj_close.index,columns=[self.ticker])
 
         bollinger_band = pd.DataFrame(algo_test.index)
-        bollinger_band[self.ticker + "_Signal"] = mvD.AlgoStats(self.ticker).action_tickers(buy_signal,sell_signal)
+        bollinger_band[self.ticker + "_Signal"] = mvD.AlgoStatsData(self.ticker).action_tickers(buy_signal,sell_signal)
 
         date = bollinger_band.pop("Date")
         bollinger_band = bollinger_band.set_index(date)
